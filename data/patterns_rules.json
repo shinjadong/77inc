@@ -1,0 +1,29 @@
+{
+  "rules": [
+    {
+      "id": "R001",
+      "condition": {
+        "contains": "하이패스",
+        "cards": [
+          "6902",
+          "6911"
+        ]
+      },
+      "usage": "차량유지비(기타)"
+    },
+    {
+      "id": "R002",
+      "condition": {
+        "contains": "휴대폰메시지"
+      },
+      "usage": "사용료"
+    },
+    {
+      "id": "R003",
+      "condition": {
+        "contains": "주유소"
+      },
+      "usage": "차량유지비(주유)"
+    }
+  ]
+}

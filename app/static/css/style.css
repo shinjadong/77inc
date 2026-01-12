@@ -1,0 +1,76 @@
+/* 칠칠기업 법인카드 스타일 */
+
+/* 드래그 앤 드롭 영역 */
+#dropZone.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* 테이블 스타일 */
+table {
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* 미분류 행 강조 */
+tr.manual-row {
+    background-color: #fef3c7;
+}
+
+/* 입력 필드 포커스 */
+input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* 버튼 호버 효과 */
+button {
+    transition: all 0.2s;
+}
+
+/* 반응형 테이블 */
+@media (max-width: 768px) {
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        font-size: 0.75rem;
+    }
+
+    table th,
+    table td {
+        padding: 0.5rem;
+    }
+}
+
+/* 로딩 상태 */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* 알림 애니메이션 */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alert {
+    animation: slideIn 0.3s ease-out;
+}

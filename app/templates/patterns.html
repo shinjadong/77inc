@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}패턴 DB - 칠칠기업 법인카드{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">패턴 DB 조회</h1>
+
+    <!-- 검색 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex gap-4">
+            <select id="patternType" class="p-2 border rounded">
+                <option value="">전체</option>
+                <option value="exact">정확 매칭</option>
+                <option value="card">카드별 특수</option>
+                <option value="rules">규칙 기반</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="가맹점명 검색..."
+                class="flex-1 p-2 border rounded">
+            <button id="searchBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                검색
+            </button>
+        </div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-green-600" id="exactCount">0</div>
+            <div class="text-sm text-gray-600">정확 매칭</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600" id="cardCount">0</div>
+            <div class="text-sm text-gray-600">카드별 특수</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600" id="rulesCount">0</div>
+            <div class="text-sm text-gray-600">규칙 기반</div>
+        </div>
+    </div>
+
+    <!-- 정확 매칭 -->
+    <div id="exactSection" class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">정확 매칭 패턴</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">가맹점</th>
+                        <th class="px-4 py-2 text-left">사용용도</th>
+                        <th class="px-4 py-2 text-right">매칭 횟수</th>
+                    </tr>
+                </thead>
+                <tbody id="exactTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 카드별 특수 -->
+    <div id="cardSection" class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">카드별 특수 매핑</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">가맹점</th>
+                        <th class="px-4 py-2 text-left">카드별 용도</th>
+                    </tr>
+                </thead>
+                <tbody id="cardTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 규칙 기반 -->
+    <div id="rulesSection" class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">규칙 기반 매핑</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">조건</th>
+                        <th class="px-4 py-2 text-left">사용용도</th>
+                    </tr>
+                </thead>
+                <tbody id="rulesTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadPatterns() {
+    const type = document.getElementById('patternType').value;
+    const search = document.getElementById('searchInput').value;
+
+    let url = '/api/patterns';
+    const params = new URLSearchParams();
+    if (type) params.append('type', type);
+    if (search) params.append('search', search);
+    if (params.toString()) url += '?' + params.toString();
+
+    const response = await fetch(url);
+    const result = await response.json();
+
+    // 통계
+    document.getElementById('exactCount').textContent = Object.keys(result.exact).length;
+    document.getElementById('cardCount').textContent = Object.keys(result.card_specific).length;
+    document.getElementById('rulesCount').textContent = result.rules.length;
+
+    // 정확 매칭 테이블
+    const exactTable = document.getElementById('exactTable');
+    exactTable.innerHTML = Object.entries(result.exact).map(([merchant, data]) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">${merchant}</td>
+            <td class="px-4 py-2">
+                <span class="px-2 py-1 bg-green-100 rounded">${data.usage}</span>
+            </td>
+            <td class="px-4 py-2 text-right">${data.count || 1}회</td>
+        </tr>
+    `).join('');
+
+    // 카드별 특수 테이블
+    const cardTable = document.getElementById('cardTable');
+    cardTable.innerHTML = Object.entries(result.card_specific).map(([merchant, cards]) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">${merchant}</td>
+            <td class="px-4 py-2">
+                ${Object.entries(cards).map(([card, usage]) =>
+                    `<span class="mr-2">[${card}] ${usage}</span>`
+                ).join('')}
+            </td>
+        </tr>
+    `).join('');
+
+    // 규칙 테이블
+    const rulesTable = document.getElementById('rulesTable');
+    rulesTable.innerHTML = result.rules.map(rule => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">
+                ${rule.condition?.contains ? `"${rule.condition.contains}" 포함` : ''}
+                ${rule.condition?.cards ? `(카드: ${rule.condition.cards.join(', ')})` : ''}
+            </td>
+            <td class="px-4 py-2">
+                <span class="px-2 py-1 bg-purple-100 rounded">${rule.usage}</span>
+            </td>
+        </tr>
+    `).join('');
+
+    // 섹션 표시/숨김
+    document.getElementById('exactSection').classList.toggle('hidden',
+        type && type !== 'exact');
+    document.getElementById('cardSection').classList.toggle('hidden',
+        type && type !== 'card');
+    document.getElementById('rulesSection').classList.toggle('hidden',
+        type && type !== 'rules');
+}
+
+document.getElementById('searchBtn').addEventListener('click', loadPatterns);
+document.getElementById('searchInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') loadPatterns();
+});
+document.getElementById('patternType').addEventListener('change', loadPatterns);
+
+// 초기 로드
+loadPatterns();
+</script>
+{% endblock %}

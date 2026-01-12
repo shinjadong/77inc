@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}미분류 관리 - 칠칠기업 법인카드{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">미분류 항목 관리</h1>
+
+    <!-- 파일 선택 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">미분류 파일</h2>
+        <select id="pendingFile" class="w-full p-2 border rounded">
+            <option value="">전체 파일</option>
+        </select>
+        <button id="loadBtn" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+            불러오기
+        </button>
+    </div>
+
+    <!-- 미분류 목록 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">미분류 항목 (<span id="itemCount">0</span>건)</h2>
+            <button id="learnBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                패턴 학습
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">날짜</th>
+                        <th class="px-4 py-2 text-left">카드</th>
+                        <th class="px-4 py-2 text-left">가맹점</th>
+                        <th class="px-4 py-2 text-left">업종</th>
+                        <th class="px-4 py-2 text-right">금액</th>
+                        <th class="px-4 py-2 text-left">사용용도</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 사용용도 목록 -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">사용용도 목록</h2>
+        <div id="usageList" class="flex flex-wrap gap-2">
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="중식대">중식대</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="차량유지비(주유)">차량유지비(주유)</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="차량유지비(기타)">차량유지비(기타)</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="사용료">사용료</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="회사물품구입비">회사물품구입비</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="기숙사 물품 구입비">기숙사 물품 구입비</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="거래처 교제비">거래처 교제비</span>
+            <span class="px-3 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" data-usage="경비">경비</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pendingItems = [];
+let selectedInput = null;
+
+// 파일 목록 로드
+async function loadFiles() {
+    const response = await fetch('/api/pending/files');
+    const result = await response.json();
+
+    const select = document.getElementById('pendingFile');
+    select.innerHTML = '<option value="">전체 파일</option>';
+    result.files.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f.split('/').pop();
+        select.appendChild(opt);
+    });
+}
+
+// 항목 로드
+async function loadItems() {
+    const file = document.getElementById('pendingFile').value;
+    const url = file ? `/api/pending?file=${encodeURIComponent(file)}` : '/api/pending';
+
+    const response = await fetch(url);
+    const result = await response.json();
+
+    pendingItems = result.items;
+    document.getElementById('itemCount').textContent = result.total;
+
+    const tbody = document.getElementById('pendingTable');
+    tbody.innerHTML = pendingItems.map((item, idx) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">${item.date}</td>
+            <td class="px-4 py-2">${item.card}</td>
+            <td class="px-4 py-2">${item.merchant}</td>
+            <td class="px-4 py-2 text-sm text-gray-500">${item.industry || '-'}</td>
+            <td class="px-4 py-2 text-right">${formatNumber(item.amount)}원</td>
+            <td class="px-4 py-2">
+                <input type="text" data-idx="${idx}"
+                    class="usage-input w-full p-1 border rounded text-sm"
+                    value="${item.suggested_usage || ''}"
+                    placeholder="사용용도 입력">
+            </td>
+        </tr>
+    `).join('');
+
+    // 입력 필드 이벤트
+    document.querySelectorAll('.usage-input').forEach(input => {
+        input.addEventListener('focus', () => {
+            selectedInput = input;
+        });
+    });
+}
+
+// 사용용도 클릭
+document.getElementById('usageList').addEventListener('click', (e) => {
+    const usage = e.target.dataset.usage;
+    if (usage && selectedInput) {
+        selectedInput.value = usage;
+        selectedInput.focus();
+    }
+});
+
+// 불러오기 버튼
+document.getElementById('loadBtn').addEventListener('click', loadItems);
+
+// 패턴 학습 버튼
+document.getElementById('learnBtn').addEventListener('click', async () => {
+    const file = document.getElementById('pendingFile').value;
+    if (!file) {
+        showAlert('파일을 선택해주세요', 'warning');
+        return;
+    }
+
+    // TODO: 입력된 값을 파일에 저장하는 로직 필요
+    // 현재는 파일에 이미 저장된 값만 학습 가능
+
+    try {
+        const response = await fetch('/api/patterns/learn', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({pending_file: file})
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(`${result.learned_count}개 패턴 학습 완료!`, 'success');
+        } else {
+            showAlert('학습 실패', 'error');
+        }
+    } catch (e) {
+        showAlert('학습 오류: ' + e.message, 'error');
+    }
+});
+
+// 초기 로드
+loadFiles();
+</script>
+{% endblock %}

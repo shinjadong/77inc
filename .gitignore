@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+*.local
+
+# Config (secrets)
+config/*.json
+!config/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Backup
+backup/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (Frontend)
+node_modules/
+.next/
+out/
+.vercel
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Temp
+미분류/
+*.tmp

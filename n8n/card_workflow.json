@@ -1,0 +1,91 @@
+{
+  "name": "칠칠기업 법인카드 자동분류",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "수동 실행",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/tlswk/77corp && source venv/bin/activate && python scripts/main.py \"/home/tlswk/77corp/카드/\" --json-output --sync-sheets 2>&1"
+      },
+      "id": "execute",
+      "name": "카드 분류 실행",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// JSON 출력 파싱\nconst output = $input.first().json.stdout;\nconst jsonMatch = output.match(/--- JSON OUTPUT ---\\n([\\s\\S]*?)$/m);\n\nif (jsonMatch) {\n  const result = JSON.parse(jsonMatch[1]);\n  return [{\n    json: {\n      success: result.success,\n      processed: result.stats.processed,\n      duplicates: result.stats.duplicates,\n      manual_count: result.manual_count,\n      pending_file: result.pending_file,\n      message: `처리: ${result.stats.processed}건, 중복: ${result.stats.duplicates}건, 미분류: ${result.manual_count}건`\n    }\n  }];\n}\n\nreturn [{ json: { success: false, error: 'JSON 파싱 실패' } }];"
+      },
+      "id": "parse",
+      "name": "결과 파싱",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.manual_count }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check_manual",
+      "name": "미분류 체크",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "message": "=### 법인카드 자동분류 완료\n\n{{ $json.message }}\n\n✅ 구글 시트 동기화 완료"
+      },
+      "id": "notify_success",
+      "name": "완료 알림",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "message": "=### ⚠️ 미분류 항목 발생\n\n{{ $json.message }}\n\n📋 미분류 파일: {{ $json.pending_file }}\n\n'최종_사용용도' 컬럼에 입력 후 learn_patterns.py 실행 필요"
+      },
+      "id": "notify_manual",
+      "name": "미분류 알림",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "수동 실행": {
+      "main": [[{"node": "카드 분류 실행", "type": "main", "index": 0}]]
+    },
+    "카드 분류 실행": {
+      "main": [[{"node": "결과 파싱", "type": "main", "index": 0}]]
+    },
+    "결과 파싱": {
+      "main": [[{"node": "미분류 체크", "type": "main", "index": 0}]]
+    },
+    "미분류 체크": {
+      "main": [
+        [{"node": "완료 알림", "type": "main", "index": 0}],
+        [{"node": "미분류 알림", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

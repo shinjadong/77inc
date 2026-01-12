@@ -1,0 +1,11 @@
+# 칠칠기업 법인카드 자동분류 시스템 의존성
+
+# Excel 처리
+openpyxl>=3.1.0
+xlrd>=2.0.1
+pandas>=2.0.0
+
+# Google Sheets API
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0

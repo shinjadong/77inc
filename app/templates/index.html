@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}메인 - 칠칠기업 법인카드{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">법인카드 자동분류</h1>
+
+    <!-- 파일 업로드 섹션 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">1. 파일 업로드</h2>
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition">
+            <div class="text-gray-500">
+                <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p class="mb-2">카드사 청구명세서 파일을 드래그하거나 클릭하여 선택</p>
+                <p class="text-sm">.xls, .xlsx 파일 지원</p>
+            </div>
+            <input type="file" id="fileInput" multiple accept=".xls,.xlsx" class="hidden">
+        </div>
+        <div id="fileList" class="mt-4 hidden">
+            <h3 class="font-medium mb-2">선택된 파일:</h3>
+            <ul id="fileListItems" class="text-sm text-gray-600"></ul>
+        </div>
+    </div>
+
+    <!-- 업로드 결과 -->
+    <div id="uploadResult" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+        <h2 class="text-xl font-semibold mb-4">2. 업로드 결과</h2>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-blue-50 p-4 rounded">
+                <div class="text-2xl font-bold text-blue-600" id="totalCount">0</div>
+                <div class="text-sm text-gray-600">총 거래</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600" id="uploadId">-</div>
+                <div class="text-xs">업로드 ID</div>
+            </div>
+        </div>
+        <button id="previewBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 mr-2">
+            미리보기
+        </button>
+    </div>
+
+    <!-- 미리보기 결과 -->
+    <div id="previewResult" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+        <h2 class="text-xl font-semibold mb-4">3. 분류 결과 미리보기</h2>
+
+        <!-- 통계 -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="bg-green-50 p-4 rounded text-center">
+                <div class="text-2xl font-bold text-green-600" id="statProcessed">0</div>
+                <div class="text-sm text-gray-600">자동 분류</div>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded text-center">
+                <div class="text-2xl font-bold text-yellow-600" id="statManual">0</div>
+                <div class="text-sm text-gray-600">미분류</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded text-center">
+                <div class="text-2xl font-bold text-gray-600" id="statDuplicates">0</div>
+                <div class="text-sm text-gray-600">중복</div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded text-center">
+                <div class="text-2xl font-bold text-blue-600" id="statTotal">0</div>
+                <div class="text-sm text-gray-600">총계</div>
+            </div>
+        </div>
+
+        <!-- 거래 목록 -->
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">날짜</th>
+                        <th class="px-4 py-2 text-left">카드</th>
+                        <th class="px-4 py-2 text-left">가맹점</th>
+                        <th class="px-4 py-2 text-right">금액</th>
+                        <th class="px-4 py-2 text-left">분류</th>
+                        <th class="px-4 py-2 text-left">매칭</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTable"></tbody>
+            </table>
+        </div>
+
+        <!-- 실행 버튼 -->
+        <div class="flex items-center gap-4">
+            <label class="flex items-center">
+                <input type="checkbox" id="syncSheets" class="mr-2">
+                <span class="text-sm">구글 시트 동기화</span>
+            </label>
+            <button id="executeBtn" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                실제 처리 실행
+            </button>
+        </div>
+    </div>
+
+    <!-- 처리 완료 -->
+    <div id="executeResult" class="bg-white rounded-lg shadow-md p-6 hidden">
+        <h2 class="text-xl font-semibold mb-4 text-green-600">처리 완료!</h2>
+        <div id="executeMessage" class="text-gray-700"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentUploadId = null;
+
+// 드래그 앤 드롭
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-blue-500', 'bg-blue-50');
+});
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+});
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+async function handleFiles(files) {
+    if (files.length === 0) return;
+
+    // 파일 목록 표시
+    const fileList = document.getElementById('fileList');
+    const fileListItems = document.getElementById('fileListItems');
+    fileListItems.innerHTML = Array.from(files).map(f =>
+        `<li>${f.name} (${(f.size/1024).toFixed(1)} KB)</li>`
+    ).join('');
+    fileList.classList.remove('hidden');
+
+    // 업로드
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append('files', file);
+    }
+
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            currentUploadId = result.upload_id;
+            document.getElementById('totalCount').textContent = result.total_transactions;
+            document.getElementById('uploadId').textContent = result.upload_id.substring(0, 8) + '...';
+            document.getElementById('uploadResult').classList.remove('hidden');
+            showAlert('파일 업로드 완료!', 'success');
+        } else {
+            showAlert('업로드 실패: ' + (result.detail || '알 수 없는 오류'), 'error');
+        }
+    } catch (e) {
+        showAlert('업로드 오류: ' + e.message, 'error');
+    }
+}
+
+// 미리보기
+document.getElementById('previewBtn').addEventListener('click', async () => {
+    if (!currentUploadId) return;
+
+    try {
+        const response = await fetch('/api/process/preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({upload_id: currentUploadId})
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // 통계 업데이트
+            document.getElementById('statProcessed').textContent = result.stats.processed;
+            document.getElementById('statManual').textContent = result.stats.manual;
+            document.getElementById('statDuplicates').textContent = result.stats.duplicates;
+            document.getElementById('statTotal').textContent = result.stats.total;
+
+            // 테이블 업데이트
+            const tbody = document.getElementById('transactionTable');
+            tbody.innerHTML = result.transactions.map(tx => `
+                <tr class="${tx.match_type === 'MANUAL' ? 'bg-yellow-50' : ''}">
+                    <td class="px-4 py-2">${tx.date}</td>
+                    <td class="px-4 py-2">${tx.card}</td>
+                    <td class="px-4 py-2">${tx.merchant}</td>
+                    <td class="px-4 py-2 text-right">${formatNumber(tx.amount)}원</td>
+                    <td class="px-4 py-2">${tx.matched_usage || '-'}</td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 rounded text-xs ${
+                            tx.match_type === 'MANUAL' ? 'bg-yellow-200' :
+                            tx.match_type === 'EXACT' ? 'bg-green-200' :
+                            'bg-blue-200'
+                        }">${tx.match_type}</span>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('previewResult').classList.remove('hidden');
+        } else {
+            showAlert('미리보기 실패: ' + (result.detail || '알 수 없는 오류'), 'error');
+        }
+    } catch (e) {
+        showAlert('미리보기 오류: ' + e.message, 'error');
+    }
+});
+
+// 실행
+document.getElementById('executeBtn').addEventListener('click', async () => {
+    if (!currentUploadId) return;
+
+    if (!confirm('실제로 처리하시겠습니까? Excel 파일이 수정됩니다.')) return;
+
+    const syncSheets = document.getElementById('syncSheets').checked;
+
+    try {
+        const response = await fetch('/api/process/execute', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                upload_id: currentUploadId,
+                sync_sheets: syncSheets
+            })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            let message = `
+                <p class="mb-2">처리 완료: <strong>${result.processed}건</strong></p>
+                <p class="mb-2">중복 건너뜀: ${result.duplicates}건</p>
+                <p class="mb-2">미분류: ${result.manual}건</p>
+            `;
+            if (result.pending_file) {
+                message += `<p class="text-yellow-600 mt-4">미분류 리포트: ${result.pending_file}</p>`;
+            }
+            if (result.synced) {
+                message += `<p class="text-green-600 mt-2">구글 시트 동기화 완료!</p>`;
+            }
+
+            document.getElementById('executeMessage').innerHTML = message;
+            document.getElementById('executeResult').classList.remove('hidden');
+            showAlert('처리 완료!', 'success');
+        } else {
+            showAlert('처리 실패: ' + (result.detail || result.message), 'error');
+        }
+    } catch (e) {
+        showAlert('처리 오류: ' + e.message, 'error');
+    }
+});
+</script>
+{% endblock %}
