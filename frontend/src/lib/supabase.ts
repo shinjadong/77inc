@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kxcvsgecefbzoiczyxsp.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4Y3ZzZ2VjZWZiem9pY3p5eHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMzcwNDgsImV4cCI6MjA4MzgxMzA0OH0.LpzRg_uzhauq-eyp1iNEVyM37wZxU2LmOUt6OAgwUBI';
+// Hardcoded values to ensure they work in all environments
+const SUPABASE_URL = 'https://kxcvsgecefbzoiczyxsp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4Y3ZzZ2VjZWZiem9pY3p5eHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMzcwNDgsImV4cCI6MjA4MzgxMzA0OH0.LpzRg_uzhauq-eyp1iNEVyM37wZxU2LmOUt6OAgwUBI';
+
+// Use env vars if available and valid, otherwise use hardcoded values
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabaseUrl = (envUrl && envUrl.startsWith('https://')) ? envUrl : SUPABASE_URL;
+const supabaseAnonKey = (envKey && envKey.startsWith('eyJ')) ? envKey : SUPABASE_ANON_KEY;
+
+console.log('[Supabase] Initializing with URL:', supabaseUrl.substring(0, 30) + '...');
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
