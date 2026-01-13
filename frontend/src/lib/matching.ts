@@ -1,15 +1,18 @@
 import { supabase } from './supabase';
+import { matchByIndustryDetailed, type IndustryMatchResult } from './industryMapping';
 
 interface MatchResult {
   usageDescription: string;
-  patternId: number;
+  patternId: number | null;
+  matchType: 'card_exact' | 'common_exact' | 'contains' | 'industry';
 }
 
 /**
- * 패턴 매칭 로직 (3단계 우선순위)
+ * 패턴 매칭 로직 (4단계 우선순위)
  * 1. 카드 전용 정확 매칭 (card_id가 있는 exact 패턴)
  * 2. 공통 정확 매칭 (card_id가 NULL인 exact 패턴)
  * 3. 포함 매칭 (contains 패턴)
+ * 4. 업종 기반 매칭 (키워드 기반 자동 분류)
  */
 export async function findMatch(
   merchantName: string,
@@ -30,6 +33,7 @@ export async function findMatch(
     return {
       usageDescription: cardExact[0].usage_description,
       patternId: cardExact[0].id,
+      matchType: 'card_exact',
     };
   }
 
@@ -48,6 +52,7 @@ export async function findMatch(
     return {
       usageDescription: commonExact[0].usage_description,
       patternId: commonExact[0].id,
+      matchType: 'common_exact',
     };
   }
 
@@ -67,10 +72,21 @@ export async function findMatch(
           return {
             usageDescription: pattern.usage_description,
             patternId: pattern.id,
+            matchType: 'contains',
           };
         }
       }
     }
+  }
+
+  // 4. 업종 기반 매칭 (키워드 기반)
+  const industryMatch = matchByIndustryDetailed(merchantName);
+  if (industryMatch && industryMatch.confidence !== 'low') {
+    return {
+      usageDescription: industryMatch.usageDescription,
+      patternId: null,
+      matchType: 'industry',
+    };
   }
 
   return null;
@@ -100,9 +116,14 @@ async function incrementUseCount(patternId: number): Promise<void> {
  */
 export async function batchMatch(
   transactions: Array<{ id: number; merchantName: string; cardId: number }>
-): Promise<{ matched: number; failed: number }> {
+): Promise<{
+  matched: number;
+  failed: number;
+  byType: { card_exact: number; common_exact: number; contains: number; industry: number };
+}> {
   let matched = 0;
   let failed = 0;
+  const byType = { card_exact: 0, common_exact: 0, contains: 0, industry: 0 };
 
   for (const tx of transactions) {
     const result = await findMatch(tx.merchantName, tx.cardId);
@@ -116,12 +137,13 @@ export async function batchMatch(
         })
         .eq('id', tx.id);
       matched++;
+      byType[result.matchType]++;
     } else {
       failed++;
     }
   }
 
-  return { matched, failed };
+  return { matched, failed, byType };
 }
 
 /**
