@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/Input';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { useTransactions, usePendingTransactions, useMatchTransaction, useCards } from '@/hooks/useApi';
-import { Receipt, Edit, Filter, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { QuickMatchInput, SelectCheckbox } from '@/components/transactions/QuickMatchInput';
+import { BatchMatchModal } from '@/components/transactions/BatchMatchModal';
+import { Receipt, Edit, Filter, AlertCircle, CheckCircle, Clock, CheckSquare, Square, Users } from 'lucide-react';
 import { formatDate, formatCurrency, getMatchStatusLabel, getMatchStatusColor } from '@/lib/utils';
 import type { Transaction } from '@/types';
 
@@ -31,6 +33,13 @@ export default function TransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [usageDescription, setUsageDescription] = useState('');
+
+  // 인라인 편집 상태
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // 일괄 선택 상태
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   // 수동 매칭 모달 열기
   const openMatchModal = (transaction: Transaction) => {
@@ -63,6 +72,48 @@ export default function TransactionsPage() {
   // 통계
   const pendingCount = pendingTransactions?.length || 0;
   const totalCount = allTransactions?.length || 0;
+
+  // 선택된 거래 목록
+  const selectedTransactions = useMemo(() => {
+    return transactions?.filter((tx) => selectedIds.has(tx.id)) || [];
+  }, [transactions, selectedIds]);
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    if (!transactions) return;
+    if (selectedIds.size === transactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(transactions.map((tx) => tx.id)));
+    }
+  };
+
+  // 단일 선택/해제
+  const handleSelect = (id: number, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // 동일 가맹점 선택
+  const handleSelectSameMerchant = (merchantName: string) => {
+    if (!transactions) return;
+    const sameTransactions = transactions.filter(
+      (tx) => tx.merchant_name === merchantName && tx.match_status === 'pending'
+    );
+    const newSelected = new Set(selectedIds);
+    sameTransactions.forEach((tx) => newSelected.add(tx.id));
+    setSelectedIds(newSelected);
+  };
+
+  // 일괄 매칭 완료 후
+  const handleBatchComplete = () => {
+    setSelectedIds(new Set());
+  };
 
   return (
     <div className="min-h-screen">
@@ -146,16 +197,65 @@ export default function TransactionsPage() {
           </div>
         )}
 
+        {/* 일괄 선택 툴바 */}
+        {selectedIds.size > 0 && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckSquare className="h-5 w-5 text-blue-600" />
+              <span className="font-medium text-blue-800">
+                {selectedIds.size}건 선택됨
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                선택 해제
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsBatchModalOpen(true)}
+              >
+                일괄 매칭
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* 거래 목록 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              거래 목록
-              {filterStatus !== 'all' && (
-                <Badge className={getMatchStatusColor(filterStatus)}>
-                  {getMatchStatusLabel(filterStatus)}
-                </Badge>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                거래 목록
+                {filterStatus !== 'all' && (
+                  <Badge className={getMatchStatusColor(filterStatus)}>
+                    {getMatchStatusLabel(filterStatus)}
+                  </Badge>
+                )}
+              </div>
+              {transactions && transactions.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="text-gray-500"
+                >
+                  {selectedIds.size === transactions.length ? (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-1" />
+                      전체 해제
+                    </>
+                  ) : (
+                    <>
+                      <Square className="h-4 w-4 mr-1" />
+                      전체 선택
+                    </>
+                  )}
+                </Button>
               )}
             </CardTitle>
           </CardHeader>
@@ -175,27 +275,53 @@ export default function TransactionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <SelectCheckbox
+                        checked={(transactions?.length ?? 0) > 0 && selectedIds.size === (transactions?.length ?? 0)}
+                        onChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>거래일</TableHead>
                     <TableHead>카드</TableHead>
                     <TableHead>가맹점</TableHead>
                     <TableHead>업종</TableHead>
                     <TableHead className="text-right">금액</TableHead>
-                    <TableHead>사용내역</TableHead>
+                    <TableHead className="min-w-[200px]">사용내역</TableHead>
                     <TableHead>상태</TableHead>
                     <TableHead className="text-right">액션</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions?.map((transaction) => (
-                    <TableRow key={transaction.id}>
+                    <TableRow
+                      key={transaction.id}
+                      className={selectedIds.has(transaction.id) ? 'bg-blue-50' : ''}
+                    >
+                      <TableCell>
+                        <SelectCheckbox
+                          checked={selectedIds.has(transaction.id)}
+                          onChange={(checked) => handleSelect(transaction.id, checked)}
+                        />
+                      </TableCell>
                       <TableCell className="text-gray-500">
                         {formatDate(transaction.transaction_date)}
                       </TableCell>
                       <TableCell>
                         {cards?.find(c => c.id === transaction.card_id)?.card_name || '-'}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {transaction.merchant_name}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{transaction.merchant_name}</span>
+                          {transaction.match_status === 'pending' && (
+                            <button
+                              onClick={() => handleSelectSameMerchant(transaction.merchant_name)}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              title="동일 가맹점 선택"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-gray-500">
                         {transaction.industry || '-'}
@@ -204,12 +330,29 @@ export default function TransactionsPage() {
                         {formatCurrency(transaction.amount)}
                       </TableCell>
                       <TableCell>
-                        {transaction.usage_description ? (
-                          <span className="text-gray-900">
-                            {transaction.usage_description}
-                          </span>
+                        {editingId === transaction.id ? (
+                          <QuickMatchInput
+                            transaction={transaction}
+                            onComplete={() => setEditingId(null)}
+                            onCancel={() => setEditingId(null)}
+                          />
                         ) : (
-                          <span className="text-gray-400 italic">미입력</span>
+                          <div
+                            onClick={() => !transaction.synced_to_sheets && setEditingId(transaction.id)}
+                            className={`cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2 ${
+                              !transaction.synced_to_sheets ? '' : 'cursor-not-allowed'
+                            }`}
+                          >
+                            {transaction.usage_description ? (
+                              <span className="text-gray-900">
+                                {transaction.usage_description}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic">
+                                클릭하여 입력...
+                              </span>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -314,6 +457,14 @@ export default function TransactionsPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* 일괄 매칭 모달 */}
+      <BatchMatchModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        transactions={selectedTransactions}
+        onComplete={handleBatchComplete}
+      />
     </div>
   );
 }

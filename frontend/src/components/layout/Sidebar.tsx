@@ -12,18 +12,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  BarChart3,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 const navigation = [
   { name: '대시보드', href: '/', icon: LayoutDashboard },
+  { name: '분석', href: '/analytics', icon: BarChart3 },
   { name: '카드 관리', href: '/cards', icon: CreditCard },
   { name: '사용자 관리', href: '/users', icon: Users },
   { name: '업로드', href: '/upload', icon: Upload },
   { name: '거래 내역', href: '/transactions', icon: FileText },
+  { name: '패턴 관리', href: '/patterns', icon: Tag },
   { name: 'Excel 내보내기', href: '/export', icon: Download },
-  { name: '설정', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
