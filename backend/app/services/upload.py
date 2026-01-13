@@ -5,10 +5,10 @@ from typing import Tuple
 from pathlib import Path
 from sqlalchemy.orm import Session
 
-from backend.app.repositories.session_repo import SessionRepository
-from backend.app.services.excel_parser import ExcelParserService
-from backend.app.services.transaction import TransactionService
-from backend.app.models.session import UploadSession, SessionStatus
+from app.repositories.session_repo import SessionRepository
+from app.services.excel_parser import ExcelParserService
+from app.services.transaction import TransactionService
+from app.models.session import UploadSession, SessionStatus
 
 
 class UploadService:

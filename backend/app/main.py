@@ -1,14 +1,24 @@
 """
 FastAPI 메인 애플리케이션
 """
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 로드
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(env_path)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api import upload, sessions, transactions, cards, patterns
-from backend.app.database import engine, Base
+from app.api import upload, sessions, transactions, cards, patterns, users, export
+from app.database import engine, Base
 
-# 테이블 생성
-Base.metadata.create_all(bind=engine)
+# 테이블 생성 (SQLite 사용 시)
+import os
+if not os.getenv("DATABASE_URL"):
+    Base.metadata.create_all(bind=engine)
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -36,6 +46,8 @@ app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(transactions.router, prefix="/api/transactions", tags=["Transactions"])
 app.include_router(cards.router, prefix="/api/cards", tags=["Cards"])
 app.include_router(patterns.router, prefix="/api/patterns", tags=["Patterns"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(export.router, prefix="/api/export", tags=["Export"])
 
 
 @app.get("/")

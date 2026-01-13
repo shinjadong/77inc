@@ -4,7 +4,7 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from backend.app.models.card import Card
+from app.models.card import Card
 
 
 class CardRepository:

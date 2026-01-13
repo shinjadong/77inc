@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
-from backend.app.database import Base
+from app.database import Base
 
 
 class MatchType(str, enum.Enum):

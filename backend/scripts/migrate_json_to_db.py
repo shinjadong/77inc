@@ -8,9 +8,9 @@ from pathlib import Path
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from backend.app.database import engine, SessionLocal, Base
-from backend.app.models import Card, Pattern
-from backend.app.models.pattern import MatchType
+from app.database import engine, SessionLocal, Base
+from app.models import Card, Pattern
+from app.models.pattern import MatchType
 
 
 # 카드 정보 정의

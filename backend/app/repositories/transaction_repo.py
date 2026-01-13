@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from backend.app.models.transaction import Transaction, MatchStatus
+from app.models.transaction import Transaction, MatchStatus
 
 
 class TransactionRepository:

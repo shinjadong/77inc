@@ -4,9 +4,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
-from backend.app.services.upload import UploadService
-from backend.app.repositories.session_repo import SessionRepository
+from app.database import get_db
+from app.services.upload import UploadService
+from app.repositories.session_repo import SessionRepository
 
 router = APIRouter()
 

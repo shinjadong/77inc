@@ -5,10 +5,10 @@ from typing import List, Optional, Dict
 from datetime import date
 from sqlalchemy.orm import Session
 
-from backend.app.repositories.transaction_repo import TransactionRepository
-from backend.app.repositories.card_repo import CardRepository
-from backend.app.services.matching import MatchingService
-from backend.app.models.transaction import Transaction, MatchStatus
+from app.repositories.transaction_repo import TransactionRepository
+from app.repositories.card_repo import CardRepository
+from app.services.matching import MatchingService
+from app.models.transaction import Transaction, MatchStatus
 
 
 class TransactionService:
@@ -135,6 +135,7 @@ class TransactionService:
         transaction_id: int,
         usage_description: str,
         save_pattern: bool = True,
+        card_specific: bool = True,
     ) -> Transaction:
         """
         수동 매칭 업데이트
@@ -143,6 +144,7 @@ class TransactionService:
             transaction_id: 거래 ID
             usage_description: 사용내역
             save_pattern: 새 패턴으로 저장할지 여부
+            card_specific: True면 해당 카드 전용 패턴, False면 공통 패턴으로 저장
 
         Returns:
             업데이트된 Transaction
@@ -159,14 +161,17 @@ class TransactionService:
             match_status=MatchStatus.MANUAL.value,
         )
 
-        # 패턴으로 저장
+        # 패턴으로 저장 (카드 전용 또는 공통)
         if save_pattern:
-            self.matching_service.create_pattern_from_manual(
+            pattern = self.matching_service.create_pattern_from_manual(
                 merchant_name=transaction.merchant_name,
                 usage_description=usage_description,
-                card_id=None,  # 공통 패턴으로 저장
+                card_id=transaction.card_id if card_specific else None,
                 created_by="manual",
             )
+            # 패턴 ID도 업데이트
+            transaction.matched_pattern_id = pattern.id
+            self.db.commit()
 
         self.db.refresh(transaction)
         return transaction

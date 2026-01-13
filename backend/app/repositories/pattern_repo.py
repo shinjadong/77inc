@@ -5,7 +5,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from backend.app.models.pattern import Pattern, MatchType
+from app.models.pattern import Pattern, MatchType
 
 
 class PatternRepository:

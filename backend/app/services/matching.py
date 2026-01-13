@@ -5,8 +5,8 @@
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 
-from backend.app.repositories.pattern_repo import PatternRepository
-from backend.app.models.pattern import Pattern, MatchType
+from app.repositories.pattern_repo import PatternRepository
+from app.models.pattern import Pattern, MatchType
 
 
 class MatchingService:
@@ -95,3 +95,100 @@ class MatchingService:
             "by_type": by_type,
             "by_card": by_card,
         }
+
+    def batch_rematch(self, card_id: Optional[int] = None) -> dict:
+        """
+        미매칭 거래에 대해 재매칭 시도
+
+        Args:
+            card_id: 특정 카드만 재매칭 (None이면 전체)
+
+        Returns:
+            재매칭 통계
+        """
+        from app.models.transaction import Transaction, MatchStatus
+
+        query = self.db.query(Transaction).filter(
+            (Transaction.usage_description.is_(None)) |
+            (Transaction.usage_description == "")
+        )
+
+        if card_id:
+            query = query.filter(Transaction.card_id == card_id)
+
+        pending = query.all()
+        stats = {"total": len(pending), "matched": 0, "failed": 0}
+
+        for tx in pending:
+            usage, pattern_id = self.find_match(tx.merchant_name, tx.card_id)
+            if usage:
+                tx.usage_description = usage
+                tx.matched_pattern_id = pattern_id
+                tx.match_status = MatchStatus.AUTO.value
+                stats["matched"] += 1
+            else:
+                stats["failed"] += 1
+
+        self.db.commit()
+        return stats
+
+    def get_card_patterns(self, card_id: int) -> list:
+        """카드별 패턴 목록 (공통 포함)"""
+        from app.models.pattern import Pattern
+
+        patterns = self.db.query(Pattern).filter(
+            (Pattern.card_id == card_id) | (Pattern.card_id.is_(None))
+        ).order_by(
+            Pattern.card_id.desc(),  # 카드 전용 먼저
+            Pattern.use_count.desc()
+        ).all()
+
+        return patterns
+
+    def suggest_patterns(self, merchant_name: str, card_id: Optional[int] = None) -> list:
+        """
+        가맹점명으로 유사 패턴 제안
+
+        Args:
+            merchant_name: 가맹점명
+            card_id: 카드 ID
+
+        Returns:
+            유사 패턴 목록
+        """
+        from app.models.pattern import Pattern
+
+        # 가맹점명 일부가 포함된 패턴 검색
+        query = self.db.query(Pattern)
+        if card_id:
+            query = query.filter(
+                (Pattern.card_id == card_id) | (Pattern.card_id.is_(None))
+            )
+
+        all_patterns = query.all()
+        suggestions = []
+
+        for p in all_patterns:
+            # 부분 매칭 점수 계산
+            score = 0
+            if p.merchant_name == merchant_name:
+                score = 100
+            elif p.merchant_name in merchant_name:
+                score = 80
+            elif merchant_name in p.merchant_name:
+                score = 60
+            elif any(word in merchant_name for word in p.merchant_name.split()):
+                score = 40
+
+            if score > 0:
+                suggestions.append({
+                    "pattern_id": p.id,
+                    "merchant_name": p.merchant_name,
+                    "usage_description": p.usage_description,
+                    "score": score,
+                    "is_card_specific": p.card_id == card_id,
+                })
+
+        # 점수순 정렬
+        suggestions.sort(key=lambda x: (-x["score"], -x.get("is_card_specific", False)))
+        return suggestions[:5]  # 상위 5개

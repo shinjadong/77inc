@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.app.database import get_db
-from backend.app.repositories.pattern_repo import PatternRepository
-from backend.app.services.matching import MatchingService
-from backend.app.models.pattern import MatchType
+from app.database import get_db
+from app.repositories.pattern_repo import PatternRepository
+from app.services.matching import MatchingService
+from app.models.pattern import MatchType
 
 router = APIRouter()
 

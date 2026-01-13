@@ -4,7 +4,7 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from backend.app.models.session import UploadSession, SessionStatus
+from app.models.session import UploadSession, SessionStatus
 
 
 class SessionRepository:
