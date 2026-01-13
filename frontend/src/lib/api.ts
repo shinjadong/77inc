@@ -12,18 +12,11 @@ import type {
 // ============ Users API ============
 export const usersApi = {
   getAll: async (activeOnly = true): Promise<User[]> => {
-    console.log('[usersApi.getAll] Starting fetch...');
-    try {
-      let query = supabase.from('users').select('*');
-      if (activeOnly) query = query.eq('is_active', true);
-      const { data, error } = await query.order('name');
-      console.log('[usersApi.getAll] Response:', { data: data?.length, error });
-      if (error) throw error;
-      return data || [];
-    } catch (err) {
-      console.error('[usersApi.getAll] Error:', err);
-      throw err;
-    }
+    let query = supabase.from('users').select('*');
+    if (activeOnly) query = query.eq('is_active', true);
+    const { data, error } = await query.order('name');
+    if (error) throw error;
+    return data || [];
   },
 
   getById: async (id: number): Promise<User | null> => {
@@ -91,21 +84,14 @@ export const usersApi = {
 // ============ Cards API ============
 export const cardsApi = {
   getAll: async (activeOnly = true): Promise<Card[]> => {
-    console.log('[cardsApi.getAll] Starting fetch...');
-    try {
-      let query = supabase.from('cards').select('*, users(*)');
-      if (activeOnly) query = query.eq('is_active', true);
-      const { data, error } = await query.order('id');
-      console.log('[cardsApi.getAll] Response:', { data: data?.length, error });
-      if (error) throw error;
-      return (data || []).map(card => ({
-        ...card,
-        user: card.users,
-      }));
-    } catch (err) {
-      console.error('[cardsApi.getAll] Error:', err);
-      throw err;
-    }
+    let query = supabase.from('cards').select('*, users(*)');
+    if (activeOnly) query = query.eq('is_active', true);
+    const { data, error } = await query.order('id');
+    if (error) throw error;
+    return (data || []).map(card => ({
+      ...card,
+      user: card.users,
+    }));
   },
 
   getById: async (id: number): Promise<Card | null> => {

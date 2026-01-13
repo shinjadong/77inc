@@ -4,8 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://kxcvsgecefbzoiczyxsp.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4Y3ZzZ2VjZWZiem9pY3p5eHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMzcwNDgsImV4cCI6MjA4MzgxMzA0OH0.LpzRg_uzhauq-eyp1iNEVyM37wZxU2LmOUt6OAgwUBI';
 
-console.log('[Supabase] Using hardcoded config');
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // 카드번호 → card_id 매핑
