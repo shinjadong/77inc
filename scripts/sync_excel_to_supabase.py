@@ -18,7 +18,9 @@ CARD_ID_MAP = {
     '6902': 3,
     '6974': 4,
     '9980': 5,
-    '6911': 6
+    '6911': 6,
+    '0981': 7,
+    '9904': 8
 }
 
 def sync_data():
@@ -27,7 +29,7 @@ def sync_data():
 
     stats = {'total': 0, 'inserted': 0, 'skipped': 0, 'errors': 0}
 
-    for sheet_name in ['3987', '4985', '6902', '6974', '9980', '6911']:
+    for sheet_name in ['3987', '4985', '6902', '6974', '9980', '6911', '0981', '9904']:
         if sheet_name not in xlsx.sheet_names:
             print(f"시트 {sheet_name} 없음, 스킵")
             continue
