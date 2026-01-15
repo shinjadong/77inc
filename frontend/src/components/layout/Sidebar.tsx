@@ -13,6 +13,8 @@ import {
   Tag,
   Menu,
   X,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -20,7 +22,9 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const navigation = [
   { name: '대시보드', href: '/', icon: LayoutDashboard },
-  { name: '거래관리', href: '/workspace', icon: FileText },
+  { name: '거래관리', href: '/transactions', icon: FileText },
+  { name: '업로드', href: '/upload', icon: Upload },
+  { name: '내보내기', href: '/export', icon: Download },
   { name: '분석', href: '/analytics', icon: BarChart3 },
   { name: '카드 관리', href: '/cards', icon: CreditCard },
   { name: '사용자 관리', href: '/users', icon: Users },
