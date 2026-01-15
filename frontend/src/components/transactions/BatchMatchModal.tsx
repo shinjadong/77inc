@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Autocomplete, type AutocompleteOption } from '@/components/ui/Autocomplete';
 import { usePatterns, useMatchTransaction } from '@/hooks/useApi';
 import { USAGE_CATEGORIES } from '@/lib/industryMapping';
+import { TAX_CATEGORIES, TAX_CATEGORY_COLORS } from '@/lib/taxCategories';
+import { classifyTransaction } from '@/lib/taxClassifier';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import type { Transaction } from '@/types';
 
@@ -25,6 +28,8 @@ export function BatchMatchModal({
   const { data: patterns } = usePatterns();
   const matchTransaction = useMatchTransaction();
   const [value, setValue] = useState('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [taxCategory, setTaxCategory] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -70,9 +75,23 @@ export function BatchMatchModal({
     setProgress(0);
 
     for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i];
+
+      // 세금분류가 지정되지 않은 경우 자동 분류
+      const finalTaxCategory = taxCategory || classifyTransaction(
+        tx.merchant_name,
+        value.trim(),
+        tx.amount
+      );
+
       await new Promise<void>((resolve) => {
         matchTransaction.mutate(
-          { id: transactions[i].id, usageDescription: value.trim() },
+          {
+            id: tx.id,
+            usageDescription: value.trim(),
+            additionalNotes: additionalNotes || undefined,
+            taxCategory: finalTaxCategory || undefined,
+          },
           {
             onSuccess: () => resolve(),
             onError: () => resolve(),
@@ -161,6 +180,47 @@ export function BatchMatchModal({
               )
             )}
           </div>
+        </div>
+
+        {/* 추가메모 입력 (선택) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            추가메모 (선택, 모든 거래에 동일 적용)
+          </label>
+          <textarea
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+            placeholder="예: 점심빵 먹느라고 한 거"
+            rows={2}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">내부 관리용 메모입니다</p>
+        </div>
+
+        {/* 세금분류 선택 (선택) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            세금분류 (선택, 미선택 시 자동 분류)
+          </label>
+          <select
+            value={taxCategory}
+            onChange={(e) => setTaxCategory(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">자동 분류</option>
+            {TAX_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+          {taxCategory && (
+            <div className="mt-2">
+              <Badge className={TAX_CATEGORY_COLORS[taxCategory as keyof typeof TAX_CATEGORY_COLORS]}>
+                {taxCategory}
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* 진행률 */}
