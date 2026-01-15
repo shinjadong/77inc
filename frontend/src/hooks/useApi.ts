@@ -114,8 +114,17 @@ export function usePendingTransactions(cardId?: number) {
 export function useMatchTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, usageDescription }: { id: number; usageDescription: string }) =>
-      transactionsApi.match(id, usageDescription),
+    mutationFn: ({
+      id,
+      usageDescription,
+      additionalNotes,
+      taxCategory,
+    }: {
+      id: number;
+      usageDescription: string;
+      additionalNotes?: string;
+      taxCategory?: string;
+    }) => transactionsApi.match(id, usageDescription, additionalNotes, taxCategory),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },

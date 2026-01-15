@@ -13,6 +13,8 @@ import { QuickMatchInput, SelectCheckbox } from '@/components/transactions/Quick
 import { BatchMatchModal } from '@/components/transactions/BatchMatchModal';
 import { Receipt, Edit, Filter, AlertCircle, CheckCircle, Clock, CheckSquare, Square, Users } from 'lucide-react';
 import { formatDate, formatCurrency, getMatchStatusLabel, getMatchStatusColor } from '@/lib/utils';
+import { classifyTransaction } from '@/lib/taxClassifier';
+import { TAX_CATEGORIES, TAX_CATEGORY_COLORS } from '@/lib/taxCategories';
 import type { Transaction } from '@/types';
 
 type FilterStatus = 'all' | 'pending' | 'auto' | 'manual';
@@ -33,6 +35,8 @@ export default function TransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [usageDescription, setUsageDescription] = useState('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [taxCategory, setTaxCategory] = useState('');
 
   // 인라인 편집 상태
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -45,6 +49,8 @@ export default function TransactionsPage() {
   const openMatchModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setUsageDescription(transaction.usage_description || '');
+    setAdditionalNotes(transaction.additional_notes || '');
+    setTaxCategory(transaction.tax_category || '');
     setIsMatchModalOpen(true);
   };
 
@@ -53,15 +59,34 @@ export default function TransactionsPage() {
     if (!selectedTransaction || !usageDescription) return;
 
     matchTransaction.mutate(
-      { id: selectedTransaction.id, usageDescription },
+      {
+        id: selectedTransaction.id,
+        usageDescription,
+        additionalNotes: additionalNotes || undefined,
+        taxCategory: taxCategory || undefined,
+      },
       {
         onSuccess: () => {
           setIsMatchModalOpen(false);
           setSelectedTransaction(null);
           setUsageDescription('');
+          setAdditionalNotes('');
+          setTaxCategory('');
         },
       }
     );
+  };
+
+  // 자동 세금 분류
+  const handleAutoClassify = () => {
+    if (!selectedTransaction) return;
+
+    const classified = classifyTransaction(
+      selectedTransaction.merchant_name,
+      usageDescription || null,
+      selectedTransaction.amount
+    );
+    setTaxCategory(classified);
   };
 
   // 필터된 거래 목록
@@ -287,6 +312,8 @@ export default function TransactionsPage() {
                     <TableHead>업종</TableHead>
                     <TableHead className="text-right">금액</TableHead>
                     <TableHead className="min-w-[200px]">사용내역</TableHead>
+                    <TableHead className="min-w-[150px]">추가메모</TableHead>
+                    <TableHead>세금분류</TableHead>
                     <TableHead>상태</TableHead>
                     <TableHead className="text-right">액션</TableHead>
                   </TableRow>
@@ -353,6 +380,24 @@ export default function TransactionsPage() {
                               </span>
                             )}
                           </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.additional_notes ? (
+                          <span className="text-sm text-gray-600">
+                            {transaction.additional_notes}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.tax_category ? (
+                          <Badge className={`text-xs ${TAX_CATEGORY_COLORS[transaction.tax_category as keyof typeof TAX_CATEGORY_COLORS] || 'bg-gray-100 text-gray-800'}`}>
+                            {transaction.tax_category}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">미분류</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -441,6 +486,58 @@ export default function TransactionsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* 추가메모 입력 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                추가메모 (선택)
+              </label>
+              <textarea
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                placeholder="예: 점심빵 먹느라고 한 거"
+                rows={2}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">내부 관리용 메모입니다</p>
+            </div>
+
+            {/* 세금분류 입력 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                세금분류
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={taxCategory}
+                  onChange={(e) => setTaxCategory(e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">선택하세요</option>
+                  {TAX_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAutoClassify}
+                  disabled={!selectedTransaction}
+                >
+                  자동 분류
+                </Button>
+              </div>
+              {taxCategory && (
+                <div className="mt-2">
+                  <Badge className={TAX_CATEGORY_COLORS[taxCategory as keyof typeof TAX_CATEGORY_COLORS]}>
+                    {taxCategory}
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
         )}
