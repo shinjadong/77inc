@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { ChatSidebarProvider, ChatSidebar, ChatSidebarToggle } from "@/components/chat-sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,12 +33,16 @@ export default function RootLayout({
       >
         <ThemeProvider defaultTheme="system">
           <Providers>
-            <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-              <Sidebar />
-              <main className="flex-1 overflow-auto md:ml-0">
-                {children}
-              </main>
-            </div>
+            <ChatSidebarProvider>
+              <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+                <Sidebar />
+                <main className="flex-1 overflow-auto md:ml-0">
+                  {children}
+                </main>
+                <ChatSidebar />
+                <ChatSidebarToggle />
+              </div>
+            </ChatSidebarProvider>
           </Providers>
         </ThemeProvider>
       </body>

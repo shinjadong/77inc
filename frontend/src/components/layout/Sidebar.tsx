@@ -6,16 +6,13 @@ import {
   LayoutDashboard,
   CreditCard,
   Users,
-  Upload,
   FileText,
   ChevronLeft,
   ChevronRight,
-  Download,
   BarChart3,
   Tag,
   Menu,
   X,
-  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -23,14 +20,11 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const navigation = [
   { name: '대시보드', href: '/', icon: LayoutDashboard },
-  { name: 'AI 어시스턴트', href: '/assistant', icon: Bot },
+  { name: '거래관리', href: '/workspace', icon: FileText },
   { name: '분석', href: '/analytics', icon: BarChart3 },
   { name: '카드 관리', href: '/cards', icon: CreditCard },
   { name: '사용자 관리', href: '/users', icon: Users },
-  { name: '업로드', href: '/upload', icon: Upload },
-  { name: '거래 내역', href: '/transactions', icon: FileText },
   { name: '패턴 관리', href: '/patterns', icon: Tag },
-  { name: 'Excel 내보내기', href: '/export', icon: Download },
 ];
 
 export function Sidebar() {
