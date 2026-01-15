@@ -30,6 +30,7 @@ import {
   setAPIKey,
   setSelectedModel,
   setProvider as saveProvider,
+  setUseServerConfig as saveUseServerConfig,
   isValidAPIKey,
   getApiKeyPlaceholder,
   getApiKeyUrl,
@@ -51,6 +52,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('claude');
+  const [useServerConfig, setUseServerConfigState] = useState(true);
 
   // 설정 로드
   useEffect(() => {
@@ -61,6 +63,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
       setSelectedModelId(settings.selectedModel);
       setIsEnvConfigured(settings.isEnvConfigured);
       setIsValidKey(isValidAPIKey(settings.provider, settings.apiKey));
+      setUseServerConfigState(settings.useServerConfig);
     }
   }, [isOpen]);
 
@@ -71,6 +74,10 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
     setIsValidKey(false);
     // 기본 모델로 변경
     setSelectedModelId(getDefaultModelForProvider(newProvider));
+    // OpenRouter 제외 시 서버 설정 기본 사용
+    if (newProvider !== 'openrouter') {
+      setUseServerConfigState(true);
+    }
   };
 
   // API 키 변경 핸들러
@@ -87,8 +94,11 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
     // 프로바이더 저장
     saveProvider(provider);
 
-    // 환경변수로 설정된 경우 API 키는 저장하지 않음
-    if (!isEnvConfigured && apiKey) {
+    // 서버 설정 사용 여부 저장
+    saveUseServerConfig(useServerConfig);
+
+    // 서버 설정 사용하지 않는 경우에만 API 키 저장
+    if (!useServerConfig && !isEnvConfigured && apiKey) {
       setAPIKey(provider, apiKey);
     }
     setSelectedModel(selectedModelId);
@@ -110,8 +120,8 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
     ? DIRECT_MODELS[provider as keyof typeof DIRECT_MODELS] || []
     : [];
 
-  // 저장 버튼 활성화 조건
-  const canSave = isValidKey || isEnvConfigured || provider === 'anthropic';
+  // 저장 버튼 활성화 조건: 서버 설정 사용 시 항상 저장 가능
+  const canSave = useServerConfig || isValidKey || isEnvConfigured;
 
   // 현재 선택된 모델 이름 가져오기
   const getSelectedModelName = () => {
@@ -179,8 +189,39 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
           </div>
         </div>
 
-        {/* API 키 입력 (환경변수로 설정되지 않은 경우만) */}
-        {!isEnvConfigured && (
+        {/* 서버 설정 사용 토글 (OpenRouter 제외) */}
+        {provider !== 'openrouter' && (
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={useServerConfig}
+                  onChange={(e) => setUseServerConfigState(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-10 h-6 rounded-full transition-colors ${
+                  useServerConfig ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}>
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    useServerConfig ? 'translate-x-4' : ''
+                  }`} />
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  서버 설정 사용
+                </span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  .env.local의 API 키 자동 적용 (권장)
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* API 키 입력 (서버 설정 미사용 시에만 표시) */}
+        {!isEnvConfigured && !useServerConfig && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">

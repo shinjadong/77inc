@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
   PROVIDER: 'ai_provider',
   API_KEY: 'ai_api_key', // 프로바이더별 API 키
   SELECTED_MODEL: 'ai_selected_model',
+  USE_SERVER_CONFIG: 'ai_use_server_config', // 서버 환경변수 사용 여부
   // Legacy keys (하위 호환성)
   OPENROUTER_API_KEY: 'openrouter_api_key',
   OPENROUTER_MODEL: 'openrouter_selected_model',
@@ -29,6 +30,7 @@ export interface AISettings {
   apiKey: string;
   selectedModel: string; // DirectModelId | ModelId
   isEnvConfigured: boolean; // 환경변수로 설정됨
+  useServerConfig: boolean; // 서버 환경변수 사용
 }
 
 // 환경변수 확인 (클라이언트에서 접근 가능한 NEXT_PUBLIC_ 변수)
@@ -72,6 +74,7 @@ export function getAISettings(): AISettings {
       apiKey: '',
       selectedModel: DEFAULT_MODEL,
       isEnvConfigured: false,
+      useServerConfig: true,
     };
   }
 
@@ -84,12 +87,18 @@ export function getAISettings(): AISettings {
   // 환경변수 API 키 확인 (OpenRouter만 클라이언트에서 접근 가능)
   const hasEnvApiKey = provider === 'openrouter' && !!envConfig.openrouterApiKey;
 
-  // API 키: 환경변수 우선, 없으면 localStorage
+  // 서버 설정 사용 여부 (저장값 또는 기본값 true)
+  const storedUseServerConfig = localStorage.getItem(STORAGE_KEYS.USE_SERVER_CONFIG);
+  const useServerConfig = storedUseServerConfig === null ? true : storedUseServerConfig === 'true';
+
+  // API 키: 서버 설정 사용 시 빈 값, 아니면 환경변수 또는 localStorage
   let apiKey = '';
-  if (provider === 'openrouter' && envConfig.openrouterApiKey) {
-    apiKey = envConfig.openrouterApiKey;
-  } else {
-    apiKey = getStoredApiKey(provider);
+  if (!useServerConfig) {
+    if (provider === 'openrouter' && envConfig.openrouterApiKey) {
+      apiKey = envConfig.openrouterApiKey;
+    } else {
+      apiKey = getStoredApiKey(provider);
+    }
   }
 
   // 모델: localStorage 우선, 없으면 환경변수 기본값
@@ -105,6 +114,7 @@ export function getAISettings(): AISettings {
     apiKey,
     selectedModel,
     isEnvConfigured: hasEnvApiKey,
+    useServerConfig,
   };
 }
 
@@ -124,6 +134,12 @@ export function setAPIKey(provider: Provider, apiKey: string): void {
 export function setSelectedModel(modelId: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL, modelId);
+}
+
+// 서버 설정 사용 여부 저장
+export function setUseServerConfig(use: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEYS.USE_SERVER_CONFIG, String(use));
 }
 
 // Legacy: OpenRouter 사용 여부 (하위 호환성)
@@ -158,6 +174,7 @@ export function clearAISettings(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(STORAGE_KEYS.PROVIDER);
   localStorage.removeItem(STORAGE_KEYS.SELECTED_MODEL);
+  localStorage.removeItem(STORAGE_KEYS.USE_SERVER_CONFIG);
   // 모든 프로바이더 API 키 삭제
   ['deepseek', 'openai', 'anthropic', 'openrouter'].forEach(p => {
     localStorage.removeItem(`${STORAGE_KEYS.API_KEY}_${p}`);

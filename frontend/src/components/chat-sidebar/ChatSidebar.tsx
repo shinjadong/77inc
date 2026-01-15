@@ -20,7 +20,13 @@ function createChatTransport() {
       // 클라이언트 사이드에서만 설정 가져오기
       if (typeof window !== 'undefined') {
         const settings = getAISettings();
-        return { settings };
+        // 서버 설정 사용 시 API 키는 빈 값으로 전달 (서버가 환경변수 사용)
+        return {
+          settings: {
+            ...settings,
+            apiKey: settings.useServerConfig ? '' : settings.apiKey,
+          },
+        };
       }
       return {};
     },

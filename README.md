@@ -1,156 +1,169 @@
-# 칠칠기업 법인카드 관리 시스템 v2.0
+# 칠칠기업 법인카드 관리 시스템 v3.0
 
-법인카드 청구명세서 자동 매칭 및 관리 시스템
+법인카드 청구명세서 자동 매칭 및 AI 기반 분류 관리 시스템
 
 ## 🎯 프로젝트 목적
 
 카드사 청구명세서(.xls)를 업로드하면:
 1. 거래 내역을 자동으로 파싱
-2. 등록된 패턴으로 "사용내역" 자동 매칭
-3. 미매칭 항목은 수동 입력 후 패턴으로 저장
-4. Google Sheets 동기화 (예정)
+2. 4단계 패턴 매칭으로 "사용내역" 자동 매칭
+3. AI 어시스턴트와 대화형으로 거래 관리
+4. 미매칭 항목은 수동 입력 후 패턴으로 저장
+5. 엑셀 내보내기 및 분석 리포트 제공
 
 ## 🏗️ 아키텍처
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Frontend      │────▶│   Backend       │────▶│   Database      │
-│   (Next.js)     │     │   (FastAPI)     │     │   (SQLite)      │
-│   Vercel        │     │   Local/CF      │     │   Local         │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+┌─────────────────┐     ┌─────────────────┐
+│   Frontend      │────▶│   Database      │
+│   (Next.js 15)  │     │   (Supabase)    │
+│   Vercel        │     │   PostgreSQL    │
+└────────┬────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│   AI Providers  │
+│   - DeepSeek    │ (기본, 최저가)
+│   - OpenAI      │
+│   - Anthropic   │
+│   - OpenRouter  │
+└─────────────────┘
 ```
 
-### Backend 구조
-```
-backend/
-├── app/
-│   ├── api/                 # FastAPI 라우터
-│   │   ├── upload.py        # 파일 업로드 API
-│   │   ├── sessions.py      # 업로드 세션 관리
-│   │   ├── transactions.py  # 거래 내역 관리
-│   │   ├── cards.py         # 카드 관리
-│   │   └── patterns.py      # 패턴 관리
-│   ├── models/              # SQLAlchemy 모델
-│   │   ├── card.py          # 법인카드
-│   │   ├── pattern.py       # 매칭 패턴
-│   │   ├── transaction.py   # 거래 내역
-│   │   └── session.py       # 업로드 세션
-│   ├── repositories/        # 데이터 액세스 계층
-│   ├── services/            # 비즈니스 로직
-│   │   ├── excel_parser.py  # Excel 파싱
-│   │   ├── matching.py      # 패턴 매칭
-│   │   ├── transaction.py   # 거래 처리
-│   │   └── upload.py        # 업로드 처리
-│   ├── database.py          # DB 연결 설정
-│   └── main.py              # FastAPI 앱
-└── scripts/
-    └── migrate_json_to_db.py  # JSON→DB 마이그레이션
-```
+## 📁 프로젝트 구조
 
-### Frontend 구조 (구현 예정)
 ```
 frontend/
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx         # 대시보드
-│   │   ├── upload/          # 파일 업로드
-│   │   ├── matching/        # 거래 매칭
-│   │   ├── cards/           # 카드 관리
-│   │   └── patterns/        # 패턴 관리
-│   ├── components/          # 공통 컴포넌트
-│   └── lib/                 # API 클라이언트
+│   │   ├── page.tsx              # 대시보드
+│   │   ├── upload/               # 파일 업로드
+│   │   ├── transactions/         # 거래 내역 관리
+│   │   ├── patterns/             # 패턴 관리
+│   │   ├── cards/                # 카드 관리
+│   │   └── api/
+│   │       └── assistant/        # AI 어시스턴트 API
+│   │
+│   ├── components/
+│   │   ├── chat-sidebar/         # AI 사이드바 채팅
+│   │   │   ├── ChatSidebar.tsx
+│   │   │   ├── AISettingsModal.tsx
+│   │   │   └── ChatSidebarHeader.tsx
+│   │   ├── assistant/            # AI 관련 UI
+│   │   ├── dashboard/            # 대시보드 컴포넌트
+│   │   ├── layout/               # 레이아웃
+│   │   └── ui/                   # 공통 UI 컴포넌트
+│   │
+│   └── lib/
+│       ├── ai/
+│       │   ├── openrouter-config.ts  # AI 프로바이더 설정
+│       │   └── settings-store.ts     # 설정 저장소
+│       ├── supabase/             # Supabase 클라이언트
+│       └── utils.ts              # 유틸리티
+│
+├── .env.example                  # 환경변수 예시
+└── package.json
 ```
 
-## 📊 데이터베이스 스키마
+## 🤖 AI 프로바이더 지원
 
-### Cards (법인카드)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | INTEGER | PK |
-| card_number | VARCHAR(4) | 카드 끝 4자리 |
-| card_name | VARCHAR(100) | 카드명/사용자명 |
-| sheet_name | VARCHAR(100) | 시트명 |
-| is_active | BOOLEAN | 활성화 여부 |
+### 지원 프로바이더
+| 프로바이더 | 가격 (1M 토큰) | 특징 |
+|-----------|---------------|------|
+| **DeepSeek** | 입력 $0.28 / 출력 $0.42 | 가장 저렴, 기본값 |
+| OpenAI | 입력 $2.50 / 출력 $10.00 | GPT-4o, 멀티모달 |
+| Anthropic | 입력 $3.00 / 출력 $15.00 | Claude Sonnet 4 |
+| OpenRouter | 다양 | 400+ 모델 통합 |
 
-### Patterns (매칭 패턴)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | INTEGER | PK |
-| merchant_name | VARCHAR(200) | 가맹점명 |
-| usage_description | VARCHAR(200) | 사용내역 |
-| card_id | INTEGER | FK (카드 전용 패턴) |
-| match_type | VARCHAR(20) | exact/contains/regex |
-| priority | INTEGER | 우선순위 |
-| use_count | INTEGER | 사용 횟수 |
+### AI 설정 모드
+- **서버 설정 사용 (권장)**: `.env.local`의 API 키 자동 사용
+- **직접 입력**: 클라이언트에서 API 키 입력
 
-### Transactions (거래내역)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | INTEGER | PK |
-| session_id | INTEGER | FK (업로드 세션) |
-| card_id | INTEGER | FK (카드) |
-| transaction_date | DATE | 거래일 |
-| merchant_name | VARCHAR(200) | 가맹점명 |
-| amount | INTEGER | 금액 |
-| usage_description | VARCHAR(200) | 사용내역 |
-| match_status | VARCHAR(20) | pending/auto/manual |
+## 📈 4단계 패턴 매칭 로직
+
+```
+1단계: 정확 일치 룩업
+   ↓ (미매칭 시)
+2단계: 유사 매칭 (Fuzzy Matching)
+   ↓ (미매칭 시)
+3단계: 규칙 기반 매칭 (키워드 패턴)
+   ↓ (미매칭 시)
+4단계: 업종 기반 자동 매칭
+```
+
+### 우선순위
+1. **카드 전용 패턴** - 특정 카드에만 적용 (priority: 10)
+2. **정확 매칭** - 가맹점명 완전 일치 (priority: 0)
+3. **포함 매칭** - 가맹점명에 특정 문자열 포함 (priority: 5)
+4. **업종 기반** - 업종 MCC 코드로 자동 분류
 
 ## 🔧 설치 및 실행
 
 ### 요구사항
-- Python 3.12+
-- Node.js 18+ (Frontend)
+- Node.js 18+
+- Supabase 프로젝트
 
-### Backend 설치
-```bash
-# 가상환경 생성
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
-
-# 패키지 설치
-pip install fastapi uvicorn sqlalchemy alembic pandas openpyxl xlrd python-multipart
-
-# DB 마이그레이션 (기존 JSON 데이터)
-python backend/scripts/migrate_json_to_db.py
-
-# 서버 실행
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8001
-```
-
-### Frontend 설치 (구현 예정)
+### 설치
 ```bash
 cd frontend
 npm install
+
+# 환경변수 설정
+cp .env.example .env.local
+# .env.local 파일 편집
+
+# 개발 서버 실행
 npm run dev
 ```
 
+### 환경변수 설정
+
+```bash
+# Supabase (필수)
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# AI 프로바이더 (기본 권장: DeepSeek)
+NEXT_PUBLIC_AI_PROVIDER=deepseek
+NEXT_PUBLIC_AI_MODEL=deepseek-chat
+
+# API 키 (서버 사이드)
+DEEPSEEK_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# OpenRouter (선택)
+NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-...
+```
+
+## 🚀 주요 기능
+
+### AI 어시스턴트
+- 자연어로 거래 내역 조회
+- 패턴 매칭 요청
+- 엑셀 다운로드 요청
+- 분석 리포트 생성
+
+### 거래 관리
+- 카드사 명세서 업로드 (XLSX/XLS)
+- 자동 패턴 매칭
+- 수동 매칭 및 패턴 저장
+- 다중 카드 지원
+
+### 분석 기능
+- 월별/카드별 사용 내역
+- 매칭 대기 건수 추적
+- 카테고리별 지출 분석
+
 ## 📡 API 엔드포인트
 
-### Upload
-- `POST /api/upload` - 카드사 청구명세서 업로드
+### AI 어시스턴트
+- `POST /api/assistant` - AI 채팅 (스트리밍)
 
-### Sessions
-- `GET /api/sessions` - 업로드 세션 목록
-- `GET /api/sessions/{id}` - 세션 상세
-- `DELETE /api/sessions/{id}` - 세션 삭제
-
-### Transactions
-- `GET /api/transactions` - 거래 목록
-- `GET /api/transactions/pending` - 미매칭 거래 (카드별)
-- `PUT /api/transactions/{id}/match` - 수동 매칭
-- `POST /api/transactions/bulk-match` - 대량 매칭
-
-### Cards
-- `GET /api/cards` - 카드 목록
-- `POST /api/cards` - 카드 등록
-- `PUT /api/cards/{id}` - 카드 수정
-
-### Patterns
-- `GET /api/patterns` - 패턴 목록
-- `GET /api/patterns/stats` - 패턴 통계
-- `POST /api/patterns` - 패턴 등록
-- `POST /api/patterns/test-match` - 매칭 테스트
+### 거래 관리 (Supabase RPC)
+- 거래 목록 조회
+- 패턴 매칭 실행
+- 수동 매칭 저장
 
 ## 🎴 등록된 카드
 | 카드번호 | 사용자 | 시트명 |
@@ -162,44 +175,28 @@ npm run dev
 | 6974 | 노혜경 이사님 | 노혜경 |
 | 9980 | 공용카드 | 공용 |
 
-## 📈 매칭 로직
-
-3단계 우선순위:
-1. **카드 전용 패턴** - 특정 카드에만 적용되는 패턴 (priority: 10)
-2. **공통 정확 매칭** - 가맹점명 일치 (priority: 0)
-3. **포함 매칭** - 가맹점명에 특정 문자열 포함 (priority: 5)
-
-## 🚀 배포 계획
-
-- **Frontend**: Vercel
-- **Backend**: Cloudflare Tunnel (로컬 서버 → 외부 접근)
-- **Mobile**: Galaxy Fold5에서 접근 가능
-
-## 📁 데이터 파일
-
-```
-data/
-├── card_system.db       # SQLite 데이터베이스
-├── patterns_exact.json  # 정확 매칭 패턴 (마이그레이션 완료)
-├── patterns_card.json   # 카드별 패턴 (마이그레이션 완료)
-└── patterns_rules.json  # 규칙 패턴 (마이그레이션 완료)
-```
-
 ## 📊 현재 상태
 
-- ✅ Phase 1: Backend 인프라 구축
-- ✅ Phase 2: Backend 핵심 서비스
-- ✅ Phase 3: Backend API 설계
-- 🔄 Phase 4: Frontend 구축 (Next.js)
-- ⏳ Phase 5: 통합 & 배포
+- ✅ Phase 1: Next.js + Supabase 아키텍처 구축
+- ✅ Phase 2: 거래 내역 관리 UI
+- ✅ Phase 3: AI 어시스턴트 통합 (멀티 프로바이더)
+- ✅ Phase 4: 4단계 패턴 매칭 로직
+- ✅ Phase 5: 서버 설정 모드 (API 키 자동 적용)
+- 🔄 Phase 6: 분석 및 리포팅 고도화
 
-### 마이그레이션 결과
-- 카드: 6개
-- 정확 매칭 패턴: 142개
-- 카드별 패턴: 10개
-- 규칙 패턴: 4개
-- **총 패턴: 156개**
+## 📝 최근 업데이트
+
+### v3.0 (2025-01)
+- 멀티 AI 프로바이더 지원 (DeepSeek, OpenAI, Anthropic, OpenRouter)
+- 서버 설정 모드 추가 (API 키 입력 없이 사용)
+- 4단계 패턴 매칭 로직 구현
+- AI 사이드바 채팅 UI 개선
+
+### v2.0 (2024-12)
+- Next.js 15 + Supabase 아키텍처로 전환
+- AI 어시스턴트 기능 추가
+- 대시보드 UI 개선
 
 ---
 
-© 2024 칠칠기업
+© 2025 칠칠기업
