@@ -15,6 +15,7 @@ import {
   Tag,
   Menu,
   X,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -22,6 +23,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const navigation = [
   { name: '대시보드', href: '/', icon: LayoutDashboard },
+  { name: 'AI 어시스턴트', href: '/assistant', icon: Bot },
   { name: '분석', href: '/analytics', icon: BarChart3 },
   { name: '카드 관리', href: '/cards', icon: CreditCard },
   { name: '사용자 관리', href: '/users', icon: Users },
