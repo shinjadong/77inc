@@ -87,7 +87,7 @@ export default function ExportPage() {
                   모든 거래 내역을 카드별 시트로 구분하여 내보냅니다.
                 </p>
                 <p className="text-xs text-green-500 mt-2">
-                  시트: 3987, 4985, 6902, 6974, 9980, 6911
+                  시트: 3987, 4985, 6902, 6974, 9980, 6911, 0981, 9904
                 </p>
               </div>
               <Button

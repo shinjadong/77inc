@@ -612,7 +612,9 @@ export const exportApi = {
 
   downloadMonthly: async (year: number, month: number): Promise<void> => {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    // 해당 월의 마지막 날 계산 (다음 달 1일에서 하루 빼기)
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const { data: transactions } = await supabase
       .from('transactions')
