@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, cardsApi, transactionsApi, patternsApi, sessionsApi, uploadApi } from '@/lib/api';
-import type { UserCreate, UserUpdate, CardCreate, CardUpdate, PatternCreate } from '@/types';
+import type { UserCreate, UserUpdate, CardCreate, CardUpdate, PatternCreate, PatternUpdate } from '@/types';
 
 // ============ Users Hooks ============
 export function useUsers(activeOnly = true) {
@@ -141,6 +141,37 @@ export function useCreatePattern() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: PatternCreate) => patternsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patterns'] });
+    },
+  });
+}
+
+export function useUpdatePattern() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PatternUpdate }) =>
+      patternsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patterns'] });
+    },
+  });
+}
+
+export function useDeletePattern() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => patternsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patterns'] });
+    },
+  });
+}
+
+export function useBulkDeletePatterns() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => patternsApi.bulkDelete(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patterns'] });
     },

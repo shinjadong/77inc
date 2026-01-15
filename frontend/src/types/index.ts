@@ -97,6 +97,22 @@ export interface PatternCreate {
   priority?: number;
 }
 
+export interface PatternUpdate {
+  merchant_name?: string;
+  usage_description?: string;
+  card_id?: number | null;
+  match_type?: 'exact' | 'contains' | 'regex';
+  priority?: number;
+}
+
+export interface PatternFilter {
+  match_type?: 'exact' | 'contains' | 'regex' | 'all';
+  card_id?: number | 'all';
+  search?: string;
+  sortBy?: 'use_count' | 'priority' | 'merchant_name';
+  sortOrder?: 'asc' | 'desc';
+}
+
 // 업로드 세션 타입
 export interface UploadSession {
   id: number;

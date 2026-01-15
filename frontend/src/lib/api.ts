@@ -5,7 +5,7 @@ import type {
   User, UserCreate, UserUpdate,
   Card, CardCreate, CardUpdate,
   Transaction,
-  Pattern, PatternCreate,
+  Pattern, PatternCreate, PatternUpdate,
   UploadSession,
 } from '@/types';
 
@@ -428,6 +428,33 @@ export const patternsApi = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  update: async (id: number, patternData: PatternUpdate): Promise<Pattern> => {
+    const { data, error } = await supabase
+      .from('patterns')
+      .update(patternData)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await supabase
+      .from('patterns')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  bulkDelete: async (ids: number[]): Promise<void> => {
+    const { error } = await supabase
+      .from('patterns')
+      .delete()
+      .in('id', ids);
+    if (error) throw error;
   },
 
   testMatch: async (merchantName: string, cardId?: number): Promise<{ match: boolean; pattern?: Pattern }> => {
