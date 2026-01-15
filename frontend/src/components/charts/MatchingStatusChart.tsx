@@ -34,9 +34,9 @@ export function MatchingStatusChart({ data }: MatchingStatusChartProps) {
       const item = payload[0].payload;
       const percent = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900">{item.label}</p>
-          <p className="text-sm text-gray-600">
+        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {item.count}건 ({percent}%)
           </p>
         </div>
@@ -52,12 +52,17 @@ export function MatchingStatusChart({ data }: MatchingStatusChartProps) {
         layout="vertical"
         margin={{ top: 10, right: 30, left: 80, bottom: 10 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" horizontal={false} />
+        <XAxis
+          type="number"
+          tick={{ fontSize: 12 }}
+          className="fill-gray-500 dark:fill-gray-400"
+        />
         <YAxis
           type="category"
           dataKey="label"
-          tick={{ fontSize: 12, fill: '#6b7280' }}
+          tick={{ fontSize: 12 }}
+          className="fill-gray-500 dark:fill-gray-400"
           width={70}
         />
         <Tooltip content={<CustomTooltip />} />
@@ -69,7 +74,8 @@ export function MatchingStatusChart({ data }: MatchingStatusChartProps) {
             dataKey="count"
             position="right"
             formatter={(value) => `${value}건`}
-            style={{ fontSize: 12, fill: '#374151' }}
+            className="fill-gray-700 dark:fill-gray-300"
+            style={{ fontSize: 12 }}
           />
         </Bar>
       </BarChart>

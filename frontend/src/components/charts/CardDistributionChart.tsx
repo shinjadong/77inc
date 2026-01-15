@@ -31,12 +31,12 @@ export function CardDistributionChart({ data }: CardDistributionChartProps) {
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900">{item.name}</p>
-          <p className="text-sm text-blue-600">
+        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 dark:text-gray-100">{item.name}</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400">
             지출: {formatCurrency(item.amount)}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             거래: {item.count}건
           </p>
         </div>
@@ -96,7 +96,7 @@ export function CardDistributionChart({ data }: CardDistributionChartProps) {
         </Pie>
         <Tooltip content={<CustomTooltip />} />
         <Legend
-          formatter={(value) => <span className="text-sm text-gray-600">{value}</span>}
+          formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-400">{value}</span>}
         />
       </PieChart>
     </ResponsiveContainer>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { MonthlySpendingChart } from '@/components/charts/MonthlySpendingChart';
 import { CardDistributionChart } from '@/components/charts/CardDistributionChart';
 import { MatchingStatusChart } from '@/components/charts/MatchingStatusChart';
+import { IndustryChart } from '@/components/charts/IndustryChart';
 import { useTransactions, useCards } from '@/hooks/useApi';
 import {
   BarChart3,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   Zap,
+  Building2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -91,6 +93,30 @@ export default function AnalyticsPage() {
     ];
   }, [transactions]);
 
+  // 업종별 데이터 집계
+  const industryData = useMemo(() => {
+    if (!transactions) return [];
+
+    const byIndustry: Record<string, { amount: number; count: number }> = {};
+
+    transactions.forEach((tx) => {
+      const industry = tx.industry || '기타';
+      if (!byIndustry[industry]) {
+        byIndustry[industry] = { amount: 0, count: 0 };
+      }
+      byIndustry[industry].amount += tx.amount;
+      byIndustry[industry].count += 1;
+    });
+
+    return Object.entries(byIndustry)
+      .map(([industry, data]) => ({
+        industry,
+        amount: data.amount,
+        count: data.count,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [transactions]);
+
   // 통계 계산
   const stats = useMemo(() => {
     if (!transactions) {
@@ -153,7 +179,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen">
         <Header title="분석" />
         <div className="p-6">
-          <p className="text-gray-500">로딩 중...</p>
+          <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
         </div>
       </div>
     );
@@ -171,18 +197,18 @@ export default function AnalyticsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">총 지출</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">총 지출</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {formatCurrency(stats.totalAmount)}
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
               <div className="mt-2 flex items-center text-sm">
                 <Receipt className="h-4 w-4 text-gray-400 mr-1" />
-                <span className="text-gray-500">{stats.totalCount}건</span>
+                <span className="text-gray-500 dark:text-gray-400">{stats.totalCount}건</span>
               </div>
             </CardContent>
           </Card>
@@ -192,28 +218,28 @@ export default function AnalyticsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">이번 달</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">이번 달</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {formatCurrency(stats.thisMonthAmount)}
                   </p>
                 </div>
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                  stats.monthChange >= 0 ? 'bg-red-100' : 'bg-green-100'
+                  stats.monthChange >= 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'
                 }`}>
                   {stats.monthChange >= 0 ? (
-                    <TrendingUp className="h-6 w-6 text-red-600" />
+                    <TrendingUp className="h-6 w-6 text-red-600 dark:text-red-400" />
                   ) : (
-                    <TrendingDown className="h-6 w-6 text-green-600" />
+                    <TrendingDown className="h-6 w-6 text-green-600 dark:text-green-400" />
                   )}
                 </div>
               </div>
               <div className="mt-2 flex items-center text-sm">
                 <span className={`font-medium ${
-                  stats.monthChange >= 0 ? 'text-red-600' : 'text-green-600'
+                  stats.monthChange >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                 }`}>
                   {stats.monthChange >= 0 ? '+' : ''}{stats.monthChange.toFixed(1)}%
                 </span>
-                <span className="text-gray-500 ml-1">전월 대비</span>
+                <span className="text-gray-500 dark:text-gray-400 ml-1">전월 대비</span>
               </div>
             </CardContent>
           </Card>
@@ -223,18 +249,18 @@ export default function AnalyticsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">매칭률</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">매칭률</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.matchRate.toFixed(1)}%
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
               <div className="mt-2 flex items-center text-sm">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   {stats.totalCount - stats.pendingCount}건 매칭 완료
                 </span>
               </div>
@@ -246,17 +272,17 @@ export default function AnalyticsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">대기 중</p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">대기 중</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {stats.pendingCount}건
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-yellow-600" />
+                <div className="h-12 w-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
               </div>
               <div className="mt-2 flex items-center text-sm">
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   매칭 대기 중인 거래
                 </span>
               </div>
@@ -278,7 +304,7 @@ export default function AnalyticsPage() {
               {monthlyData.length > 0 ? (
                 <MonthlySpendingChart data={monthlyData} />
               ) : (
-                <p className="text-gray-500 text-center py-8">데이터가 없습니다.</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">데이터가 없습니다.</p>
               )}
             </CardContent>
           </Card>
@@ -295,11 +321,28 @@ export default function AnalyticsPage() {
               {cardData.length > 0 ? (
                 <CardDistributionChart data={cardData} />
               ) : (
-                <p className="text-gray-500 text-center py-8">데이터가 없습니다.</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">데이터가 없습니다.</p>
               )}
             </CardContent>
           </Card>
         </div>
+
+        {/* 업종별 지출 분포 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              업종별 지출 분포
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {industryData.length > 0 ? (
+              <IndustryChart data={industryData} />
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">데이터가 없습니다.</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 매칭 현황 */}
         <Card>
@@ -318,18 +361,18 @@ export default function AnalyticsPage() {
                 {matchingData.map((item) => (
                   <div
                     key={item.status}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="font-medium text-gray-700">{item.label}</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">{item.count}건</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-bold text-gray-900 dark:text-gray-100">{item.count}건</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {stats.totalCount > 0
                           ? ((item.count / stats.totalCount) * 100).toFixed(1)
                           : 0}%

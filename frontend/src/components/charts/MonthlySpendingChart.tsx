@@ -40,13 +40,13 @@ export function MonthlySpendingChart({ data }: MonthlySpendingChartProps) {
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900">{label}</p>
-          <p className="text-sm text-blue-600">
+        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 dark:text-gray-100">{label}</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400">
             지출: {formatCurrency(payload[0].value)}
           </p>
           {payload[1] && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               거래: {payload[1].value}건
             </p>
           )}
@@ -59,26 +59,35 @@ export function MonthlySpendingChart({ data }: MonthlySpendingChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
         <XAxis
           dataKey="month"
-          tick={{ fontSize: 12, fill: '#6b7280' }}
-          axisLine={{ stroke: '#e5e7eb' }}
+          tick={{ fontSize: 12 }}
+          className="fill-gray-500 dark:fill-gray-400"
+          axisLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
+          tickLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
         />
         <YAxis
           yAxisId="left"
           tickFormatter={formatYAxis}
-          tick={{ fontSize: 12, fill: '#6b7280' }}
-          axisLine={{ stroke: '#e5e7eb' }}
+          tick={{ fontSize: 12 }}
+          className="fill-gray-500 dark:fill-gray-400"
+          axisLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
+          tickLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
-          tick={{ fontSize: 12, fill: '#6b7280' }}
-          axisLine={{ stroke: '#e5e7eb' }}
+          tick={{ fontSize: 12 }}
+          className="fill-gray-500 dark:fill-gray-400"
+          axisLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
+          tickLine={{ className: 'stroke-gray-200 dark:stroke-gray-700' }}
         />
         <Tooltip content={<CustomTooltip />} />
-        <Legend />
+        <Legend
+          wrapperStyle={{ paddingTop: 10 }}
+          formatter={(value) => <span className="text-gray-600 dark:text-gray-400">{value}</span>}
+        />
         <Bar
           yAxisId="left"
           dataKey="amount"
