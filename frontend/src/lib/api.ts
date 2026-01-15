@@ -374,13 +374,20 @@ export const transactionsApi = {
     return (data || []).map(tx => ({ ...tx, card: tx.cards }));
   },
 
-  match: async (id: number, usageDescription: string): Promise<Transaction> => {
+  match: async (
+    id: number,
+    usageDescription: string,
+    additionalNotes?: string,
+    taxCategory?: string
+  ): Promise<Transaction> => {
     const { data: tx } = await supabase.from('transactions').select('*').eq('id', id).single();
 
     await supabase
       .from('transactions')
       .update({
         usage_description: usageDescription,
+        additional_notes: additionalNotes || null,
+        tax_category: taxCategory || null,
         match_status: 'manual',
       })
       .eq('id', id);
@@ -393,9 +400,19 @@ export const transactionsApi = {
     return updated!;
   },
 
-  bulkMatch: async (matches: { id: number; usage_description: string }[]): Promise<void> => {
+  bulkMatch: async (matches: {
+    id: number;
+    usage_description: string;
+    additional_notes?: string;
+    tax_category?: string;
+  }[]): Promise<void> => {
     for (const match of matches) {
-      await transactionsApi.match(match.id, match.usage_description);
+      await transactionsApi.match(
+        match.id,
+        match.usage_description,
+        match.additional_notes,
+        match.tax_category
+      );
     }
   },
 };

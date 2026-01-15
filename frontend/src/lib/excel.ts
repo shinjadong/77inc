@@ -154,7 +154,9 @@ export async function exportToExcel(
       { header: '결제일자', key: 'date', width: 12 },
       { header: '가맹점명', key: 'merchant', width: 30 },
       { header: '이용금액', key: 'amount', width: 15 },
-      { header: '사용용도', key: 'usage', width: 40 },
+      { header: '사용용도', key: 'usage', width: 30 },
+      { header: '추가메모', key: 'notes', width: 40 },
+      { header: '세금분류', key: 'tax', width: 20 },
     ];
 
     // 헤더 스타일
@@ -185,6 +187,8 @@ export async function exportToExcel(
         merchant: tx.merchant_name,
         amount: tx.amount,
         usage: tx.usage_description || '',
+        notes: tx.additional_notes || '',
+        tax: tx.tax_category || '',
       });
 
       // 날짜 포맷
@@ -209,7 +213,7 @@ export async function exportToExcel(
     // 빈 시트 처리
     if (transactions.length === 0) {
       const emptyRow = worksheet.addRow({ date: '데이터 없음' });
-      worksheet.mergeCells(`A2:D2`);
+      worksheet.mergeCells(`A2:F2`);
       emptyRow.getCell(1).alignment = { horizontal: 'center' };
       emptyRow.getCell(1).font = { italic: true, color: { argb: 'FF888888' } };
     }

@@ -71,6 +71,8 @@ export interface Transaction {
   amount: number;
   industry: string | null;
   usage_description: string | null;
+  additional_notes: string | null;  // 추가메모: 내부 관리용 선택 입력
+  tax_category: string | null;      // 세금분류: AI 자동 분류
   match_status: 'pending' | 'auto' | 'manual';
   matched_pattern_id: number | null;
   synced_to_sheets: boolean;
