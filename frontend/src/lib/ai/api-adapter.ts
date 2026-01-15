@@ -2,78 +2,15 @@
 // 기존 API와 AI Tool을 연결하는 유틸리티 함수들
 
 import { supabase } from '../supabase';
+import {
+  findCardIdByName,
+  getCardInfoById,
+  getAllCardInfo,
+} from '../card-config';
 
-// 카드명 → 카드ID 매핑
-const CARD_NAME_MAP: Record<string, number> = {
-  // 사용자명
-  '김준교': 1,
-  '준교': 1,
-  '김용석': 2,
-  '용석': 2,
-  '대표님': 2,
-  '대표': 2,
-  '노혜경': 4,
-  '혜경': 4,
-  '이사님': 4,
-  '이사': 4,
-  // 카드 유형
-  '하이패스1': 3,
-  '하이패스2': 6,
-  '공용': 5,
-  '공용카드': 5,
-  // 카드번호 끝4자리
-  '3987': 1,
-  '4985': 2,
-  '6902': 3,
-  '6974': 4,
-  '9980': 5,
-  '6911': 6,
-};
-
-// 카드ID → 카드정보 매핑
-const CARD_INFO_MAP: Record<number, { cardNumber: string; cardName: string; userName: string; cardType: string }> = {
-  1: { cardNumber: '3987', cardName: '김준교 카드', userName: '김준교', cardType: '개인' },
-  2: { cardNumber: '4985', cardName: '대표님 카드', userName: '김용석', cardType: '개인' },
-  3: { cardNumber: '6902', cardName: '하이패스1', userName: '-', cardType: '차량' },
-  4: { cardNumber: '6974', cardName: '이사님 카드', userName: '노혜경', cardType: '개인' },
-  5: { cardNumber: '9980', cardName: '공용카드', userName: '-', cardType: '공용' },
-  6: { cardNumber: '6911', cardName: '하이패스2', userName: '-', cardType: '차량' },
-};
-
-/**
- * 카드명/사용자명/카드번호로 카드 ID 찾기
- */
-export function findCardIdByName(name: string): number | null {
-  if (!name) return null;
-
-  const normalizedName = name.trim().toLowerCase();
-
-  // 직접 매핑 검색
-  for (const [key, id] of Object.entries(CARD_NAME_MAP)) {
-    if (normalizedName.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedName)) {
-      return id;
-    }
-  }
-
-  return null;
-}
-
-/**
- * 카드 ID로 카드 정보 가져오기
- */
-export function getCardInfoById(cardId: number) {
-  return CARD_INFO_MAP[cardId] || null;
-}
-
-/**
- * 모든 카드 정보 가져오기
- */
-export function getAllCardInfo() {
-  return Object.entries(CARD_INFO_MAP).map(([id, info]) => ({
-    id: parseInt(id),
-    ...info,
-  }));
-}
+// 카드 정보 관련 함수는 card-config.ts에서 import
+// 통합된 카드 정보 관리로 중복 제거 및 성능 최적화 (O(n) → O(1))
+export { findCardIdByName, getCardInfoById, getAllCardInfo };
 
 /**
  * 자연어 날짜 파싱

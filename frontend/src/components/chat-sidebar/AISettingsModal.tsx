@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,8 @@ import {
   ExternalLink,
   Shield,
   DollarSign,
+  Search,
+  Clock,
 } from 'lucide-react';
 import {
   PROVIDERS,
@@ -24,6 +26,7 @@ import {
   type ModelId,
   getModelInfo,
   getDirectModelInfo,
+  getDefaultModel,
 } from '@/lib/ai/openrouter-config';
 import {
   getAISettings,
@@ -34,77 +37,90 @@ import {
   isValidAPIKey,
   getApiKeyPlaceholder,
   getApiKeyUrl,
-  getDefaultModelForProvider,
+  addRecentModel,
+  getRecentModels,
 } from '@/lib/ai/settings-store';
-import { resetChatInstance } from './ChatSidebar';
 
 interface AISettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+// 통합 설정 상태 인터페이스
+interface AISettings {
+  provider: Provider;
+  apiKey: string;
+  selectedModelId: string;
+  useServerConfig: boolean;
+}
+
 export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
-  const [provider, setProviderState] = useState<Provider>('deepseek');
-  const [apiKey, setApiKeyState] = useState('');
-  const [selectedModelId, setSelectedModelId] = useState<string>('deepseek-chat');
+  // 통합된 설정 상태 (9개 → 4개 주요 필드)
+  const [settings, setSettings] = useState<AISettings>({
+    provider: 'deepseek',
+    apiKey: '',
+    selectedModelId: 'deepseek-chat',
+    useServerConfig: true,
+  });
+
+  // UI 관련 상태 (별도 관리)
   const [isEnvConfigured, setIsEnvConfigured] = useState(false);
-  const [isValidKey, setIsValidKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('claude');
-  const [useServerConfig, setUseServerConfigState] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(''); // Phase 3.2: 검색 추가
 
   // 설정 로드
   useEffect(() => {
     if (isOpen) {
-      const settings = getAISettings();
-      setProviderState(settings.provider);
-      setApiKeyState(settings.apiKey);
-      setSelectedModelId(settings.selectedModel);
-      setIsEnvConfigured(settings.isEnvConfigured);
-      setIsValidKey(isValidAPIKey(settings.provider, settings.apiKey));
-      setUseServerConfigState(settings.useServerConfig);
+      const savedSettings = getAISettings();
+      setSettings({
+        provider: savedSettings.provider,
+        apiKey: savedSettings.apiKey,
+        selectedModelId: savedSettings.selectedModel,
+        useServerConfig: savedSettings.useServerConfig,
+      });
+      setIsEnvConfigured(savedSettings.isEnvConfigured);
     }
   }, [isOpen]);
 
-  // 프로바이더 변경 핸들러
-  const handleProviderChange = (newProvider: Provider) => {
-    setProviderState(newProvider);
-    setApiKeyState(''); // API 키 초기화
-    setIsValidKey(false);
-    // 기본 모델로 변경
-    setSelectedModelId(getDefaultModelForProvider(newProvider));
-    // OpenRouter 제외 시 서버 설정 기본 사용
-    if (newProvider !== 'openrouter') {
-      setUseServerConfigState(true);
-    }
+  // 설정 부분 업데이트 헬퍼
+  const updateSettings = (partial: Partial<AISettings>) => {
+    setSettings(prev => ({ ...prev, ...partial }));
   };
 
-  // API 키 변경 핸들러
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setApiKeyState(value);
-    setIsValidKey(isValidAPIKey(provider, value));
+  // 프로바이더 변경 핸들러 (자동 동기화)
+  const handleProviderChange = (provider: Provider) => {
+    updateSettings({
+      provider,
+      selectedModelId: getDefaultModel(provider),
+      apiKey: '',
+      useServerConfig: provider !== 'openrouter',
+    });
   };
+
+  // API 키 검증 (메모이제이션)
+  const isValidKey = useMemo(
+    () => isValidAPIKey(settings.provider, settings.apiKey),
+    [settings.provider, settings.apiKey]
+  );
 
   // 저장 핸들러
   const handleSave = () => {
     setIsSaving(true);
 
-    // 프로바이더 저장
-    saveProvider(provider);
+    // 설정 저장
+    saveProvider(settings.provider);
+    saveUseServerConfig(settings.useServerConfig);
 
-    // 서버 설정 사용 여부 저장
-    saveUseServerConfig(useServerConfig);
-
-    // 서버 설정 사용하지 않는 경우에만 API 키 저장
-    if (!useServerConfig && !isEnvConfigured && apiKey) {
-      setAPIKey(provider, apiKey);
+    // 서버 설정 미사용 시에만 API 키 저장
+    if (!settings.useServerConfig && !isEnvConfigured && settings.apiKey) {
+      setAPIKey(settings.provider, settings.apiKey);
     }
-    setSelectedModel(selectedModelId);
+    setSelectedModel(settings.selectedModelId);
 
-    // 채팅 인스턴스 리셋 (새 설정 적용)
-    resetChatInstance();
+    // Phase 3.3: 최근 사용 모델에 추가
+    addRecentModel(settings.provider, settings.selectedModelId);
 
     setTimeout(() => {
       setIsSaving(false);
@@ -112,24 +128,59 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
     }, 500);
   };
 
-  // OpenRouter 모델 필터링
-  const filteredOpenRouterModels = OPENROUTER_MODELS.filter(m => m.category === activeCategory);
+  // Phase 3.2: OpenRouter 모델 검색 및 필터링
+  const filteredOpenRouterModels = useMemo(() => {
+    let models = [...OPENROUTER_MODELS]; // spread로 배열 복사 (readonly tuple → mutable array)
+
+    // 카테고리 필터
+    if (activeCategory) {
+      models = models.filter(m => m.category === activeCategory);
+    }
+
+    // 검색 필터
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      models = models.filter(
+        m =>
+          m.name.toLowerCase().includes(query) ||
+          m.id.toLowerCase().includes(query) ||
+          m.provider.toLowerCase().includes(query) ||
+          m.description.toLowerCase().includes(query)
+      );
+    }
+
+    return models;
+  }, [activeCategory, searchQuery]);
+
+  // Phase 3.3: 최근 사용 모델
+  const recentModels = useMemo(
+    () => getRecentModels(settings.provider),
+    [settings.provider]
+  );
 
   // 직접 연동 모델 목록
-  const directModels = provider !== 'openrouter'
-    ? DIRECT_MODELS[provider as keyof typeof DIRECT_MODELS] || []
+  const directModels = settings.provider !== 'openrouter'
+    ? DIRECT_MODELS[settings.provider as keyof typeof DIRECT_MODELS] || []
     : [];
 
-  // 저장 버튼 활성화 조건: 서버 설정 사용 시 항상 저장 가능
-  const canSave = useServerConfig || isValidKey || isEnvConfigured;
+  // 저장 버튼 활성화 조건
+  const canSave = settings.useServerConfig || isValidKey || isEnvConfigured;
 
-  // 현재 선택된 모델 이름 가져오기
+  // 선택된 모델 이름 가져오기
   const getSelectedModelName = () => {
-    if (provider === 'openrouter') {
-      return getModelInfo(selectedModelId)?.name || selectedModelId;
+    if (settings.provider === 'openrouter') {
+      return getModelInfo(settings.selectedModelId)?.name || settings.selectedModelId;
     }
-    const modelInfo = getDirectModelInfo(provider, selectedModelId);
-    return modelInfo?.name || selectedModelId;
+    const modelInfo = getDirectModelInfo(settings.provider, settings.selectedModelId);
+    return modelInfo?.name || settings.selectedModelId;
+  };
+
+  // 최근 모델 이름 가져오기
+  const getModelName = (modelId: string) => {
+    if (settings.provider === 'openrouter') {
+      return getModelInfo(modelId)?.name || modelId;
+    }
+    return getDirectModelInfo(settings.provider, modelId)?.name || modelId;
   };
 
   return (
@@ -167,7 +218,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                 key={p.id}
                 onClick={() => handleProviderChange(p.id)}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
-                  provider === p.id
+                  settings.provider === p.id
                     ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
@@ -181,7 +232,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                     {p.description}
                   </p>
                 </div>
-                {provider === p.id && (
+                {settings.provider === p.id && (
                   <Check className="h-4 w-4 text-purple-600 flex-shrink-0" />
                 )}
               </button>
@@ -189,47 +240,70 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
           </div>
         </div>
 
-        {/* 서버 설정 사용 토글 (OpenRouter 제외) */}
-        {provider !== 'openrouter' && (
-          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+        {/* Phase 3.4: 서버 설정 사용 토글 (개선된 안내) */}
+        {settings.provider !== 'openrouter' && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <label className="flex items-center gap-3 cursor-pointer">
               <div className="relative">
                 <input
                   type="checkbox"
-                  checked={useServerConfig}
-                  onChange={(e) => setUseServerConfigState(e.target.checked)}
+                  checked={settings.useServerConfig}
+                  onChange={(e) => updateSettings({ useServerConfig: e.target.checked })}
                   className="sr-only"
                 />
                 <div className={`w-10 h-6 rounded-full transition-colors ${
-                  useServerConfig ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                  settings.useServerConfig ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
                 }`}>
                   <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    useServerConfig ? 'translate-x-4' : ''
+                    settings.useServerConfig ? 'translate-x-4' : ''
                   }`} />
                 </div>
               </div>
-              <div>
+              <div className="flex-1">
                 <span className="font-medium text-gray-900 dark:text-gray-100">
-                  서버 설정 사용
+                  API 키 설정 방식
                 </span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  .env.local의 API 키 자동 적용 (권장)
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  {settings.useServerConfig ? (
+                    <>
+                      ✅ <strong>환경변수 사용 (권장)</strong>: 서버의 .env.local에 저장된 API 키 자동 사용. 더 안전하고 키 입력 불필요.
+                    </>
+                  ) : (
+                    <>
+                      🔓 <strong>직접 입력</strong>: 브라우저 로컬스토리지에 API 키 저장. 빠른 테스트용, 보안 주의 필요.
+                    </>
+                  )}
                 </p>
               </div>
             </label>
           </div>
         )}
 
+        {/* Phase 3.4: Anthropic 특별 안내 */}
+        {settings.provider === 'anthropic' && (
+          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Bot className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                ℹ️ Anthropic 프로바이더
+              </span>
+            </div>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 ml-6">
+              Anthropic SDK는 환경변수만 지원합니다. .env.local에 ANTHROPIC_API_KEY를 설정하세요.
+            </p>
+          </div>
+        )}
+
         {/* API 키 입력 (서버 설정 미사용 시에만 표시) */}
-        {!isEnvConfigured && !useServerConfig && (
+        {!isEnvConfigured && !settings.useServerConfig && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 <Key className="h-4 w-4" />
-                {PROVIDERS.find(p => p.id === provider)?.name} API 키
+                {PROVIDERS.find(p => p.id === settings.provider)?.name} API 키
               </label>
               <a
-                href={getApiKeyUrl(provider)}
+                href={getApiKeyUrl(settings.provider)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
@@ -241,9 +315,9 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
             <div className="relative">
               <Input
                 type={showApiKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={handleApiKeyChange}
-                placeholder={getApiKeyPlaceholder(provider)}
+                value={settings.apiKey}
+                onChange={(e) => updateSettings({ apiKey: e.target.value })}
+                placeholder={getApiKeyPlaceholder(settings.provider)}
                 className="pr-20"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -254,7 +328,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                 >
                   {showApiKey ? '숨기기' : '보기'}
                 </button>
-                {apiKey && (
+                {settings.apiKey && (
                   isValidKey ? (
                     <Check className="h-4 w-4 text-green-500" />
                   ) : (
@@ -263,7 +337,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                 )}
               </div>
             </div>
-            {apiKey && !isValidKey && (
+            {settings.apiKey && !isValidKey && (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
                 올바른 API 키 형식이 아닙니다
               </p>
@@ -271,68 +345,138 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
           </div>
         )}
 
-        {/* 모델 선택 (OpenRouter) */}
-        {provider === 'openrouter' && (
-          <div className="space-y-3">
+        {/* Phase 3.3: 최근 사용 모델 (OpenRouter 제외) */}
+        {settings.provider !== 'openrouter' && recentModels.length > 0 && (
+          <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <Bot className="h-4 w-4" />
-              AI 모델 선택
+              <Clock className="h-4 w-4" />
+              최근 사용 모델
             </label>
-
-            {/* 카테고리 탭 */}
-            <div className="flex flex-wrap gap-1">
-              {MODEL_CATEGORIES.map((cat) => (
+            <div className="flex flex-wrap gap-2">
+              {recentModels.map(modelId => (
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
-                    activeCategory === cat.id
+                  key={modelId}
+                  onClick={() => updateSettings({ selectedModelId: modelId })}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    settings.selectedModelId === modelId
                       ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   }`}
                 >
-                  <span>{cat.icon}</span>
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-
-            {/* 모델 목록 */}
-            <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto">
-              {filteredOpenRouterModels.map((model) => (
-                <button
-                  key={model.id}
-                  onClick={() => setSelectedModelId(model.id)}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors text-left ${
-                    selectedModelId === model.id
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 dark:text-gray-100">
-                        {model.name}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {model.provider}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                      {model.description}
-                    </p>
-                  </div>
-                  {selectedModelId === model.id && (
-                    <Check className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
-                  )}
+                  {getModelName(modelId)}
                 </button>
               ))}
             </div>
           </div>
         )}
 
+        {/* 모델 선택 (OpenRouter) */}
+        {settings.provider === 'openrouter' && (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Bot className="h-4 w-4" />
+              AI 모델 선택
+            </label>
+
+            {/* Phase 3.2: 검색 입력 */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="모델 검색... (예: claude, gpt, gemini)"
+                className="pl-10"
+              />
+            </div>
+
+            {/* Phase 3.3: 최근 사용 모델 (OpenRouter) */}
+            {recentModels.length > 0 && !searchQuery && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  <Clock className="h-3 w-3" />
+                  최근 사용
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {recentModels.map(modelId => (
+                    <button
+                      key={modelId}
+                      onClick={() => updateSettings({ selectedModelId: modelId })}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        settings.selectedModelId === modelId
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      }`}
+                    >
+                      {getModelName(modelId)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 카테고리 탭 (검색 없을 때만 표시) */}
+            {!searchQuery && (
+              <div className="flex flex-wrap gap-1">
+                {MODEL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                      activeCategory === cat.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 모델 목록 */}
+            <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto">
+              {filteredOpenRouterModels.length > 0 ? (
+                filteredOpenRouterModels.map((model) => (
+                  <button
+                    key={model.id}
+                    onClick={() => updateSettings({ selectedModelId: model.id })}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors text-left ${
+                      settings.selectedModelId === model.id
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {model.name}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {model.provider}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                        {model.description}
+                      </p>
+                    </div>
+                    {settings.selectedModelId === model.id && (
+                      <Check className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
+                  "{searchQuery}" 검색 결과 없음
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 모델 선택 (직접 연동) */}
-        {provider !== 'openrouter' && directModels.length > 0 && (
+        {settings.provider !== 'openrouter' && directModels.length > 0 && (
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Bot className="h-4 w-4" />
@@ -342,9 +486,9 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
               {directModels.map((model) => (
                 <button
                   key={model.id}
-                  onClick={() => setSelectedModelId(model.id)}
+                  onClick={() => updateSettings({ selectedModelId: model.id })}
                   className={`flex items-center justify-between p-3 rounded-lg border transition-colors text-left ${
-                    selectedModelId === model.id
+                    settings.selectedModelId === model.id
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
@@ -363,7 +507,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                       {model.description}
                     </p>
                   </div>
-                  {selectedModelId === model.id && (
+                  {settings.selectedModelId === model.id && (
                     <Check className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
                   )}
                 </button>
@@ -378,7 +522,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
             <span className="text-sm text-gray-500 dark:text-gray-400">현재 선택:</span>
             <div className="flex items-center gap-2">
               <Badge variant="default">
-                {PROVIDERS.find(p => p.id === provider)?.name}
+                {PROVIDERS.find(p => p.id === settings.provider)?.name}
               </Badge>
               <Badge variant="info">
                 {getSelectedModelName()}
@@ -388,7 +532,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
         </div>
 
         {/* 가격 안내 (DeepSeek) */}
-        {provider === 'deepseek' && (
+        {settings.provider === 'deepseek' && (
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-blue-600" />

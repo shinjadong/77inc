@@ -33,29 +33,23 @@ function createChatTransport() {
   });
 }
 
-// 채팅 인스턴스 (전역)
-let chatInstance: Chat<UIMessage> | null = null;
-
-function getChatInstance() {
-  if (!chatInstance) {
-    chatInstance = new Chat<UIMessage>({
-      transport: createChatTransport(),
-      messages: [],
-    });
-  }
-  return chatInstance;
-}
-
-// 채팅 인스턴스 리셋 (설정 변경 시)
-export function resetChatInstance() {
-  chatInstance = null;
-}
-
 export function ChatSidebar() {
   const { isOpen, closeSidebar } = useChatSidebar();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<Chat<UIMessage> | null>(null);
   const [input, setInput] = useState('');
   const [chatKey, setChatKey] = useState(0);
+
+  // Chat 인스턴스 가져오기 (메모이제이션)
+  const getChatInstance = useCallback(() => {
+    if (!chatRef.current) {
+      chatRef.current = new Chat<UIMessage>({
+        transport: createChatTransport(),
+        messages: [],
+      });
+    }
+    return chatRef.current;
+  }, []);
 
   const {
     messages,
@@ -66,6 +60,19 @@ export function ChatSidebar() {
   } = useChat({
     chat: getChatInstance(),
   });
+
+  // 컴포넌트 언마운트 시 명시적 cleanup
+  useEffect(() => {
+    return () => {
+      if (chatRef.current) {
+        // 스트리밍 중단 (있다면)
+        if (chatRef.current.stop) {
+          chatRef.current.stop();
+        }
+        chatRef.current = null;
+      }
+    };
+  }, []);
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -108,6 +115,20 @@ export function ChatSidebar() {
     setMessages([]);
     setChatKey((k) => k + 1);
   };
+
+  // 설정 변경 시 Chat 인스턴스 리셋
+  const resetChatOnSettingsChange = useCallback(() => {
+    if (chatRef.current) {
+      // 스트리밍 중단
+      if (chatRef.current.stop) {
+        chatRef.current.stop();
+      }
+      chatRef.current = null;
+    }
+    // 메시지 초기화 및 새 Chat 인스턴스 생성
+    setMessages([]);
+    getChatInstance();
+  }, [getChatInstance, setMessages]);
 
   return (
     <>

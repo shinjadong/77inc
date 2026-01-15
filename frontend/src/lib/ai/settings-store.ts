@@ -12,6 +12,7 @@ import {
   type DirectModelId,
   getEnvConfig,
   DIRECT_MODELS,
+  getDefaultModel,
 } from './openrouter-config';
 
 const STORAGE_KEYS = {
@@ -19,11 +20,15 @@ const STORAGE_KEYS = {
   API_KEY: 'ai_api_key', // 프로바이더별 API 키
   SELECTED_MODEL: 'ai_selected_model',
   USE_SERVER_CONFIG: 'ai_use_server_config', // 서버 환경변수 사용 여부
+  RECENT_MODELS: 'ai_recent_models', // 최근 사용 모델 (프로바이더별)
   // Legacy keys (하위 호환성)
   OPENROUTER_API_KEY: 'openrouter_api_key',
   OPENROUTER_MODEL: 'openrouter_selected_model',
   USE_OPENROUTER: 'use_openrouter',
 } as const;
+
+// 최근 사용 모델 설정
+const MAX_RECENT_MODELS = 5;
 
 export interface AISettings {
   provider: Provider;
@@ -33,8 +38,8 @@ export interface AISettings {
   useServerConfig: boolean; // 서버 환경변수 사용
 }
 
-// 환경변수 확인 (클라이언트에서 접근 가능한 NEXT_PUBLIC_ 변수)
-function getClientEnvConfig() {
+// 환경변수 캐싱 (모듈 로드 시 한 번만 읽기)
+const ENV_CONFIG = (() => {
   if (typeof window === 'undefined') {
     return {
       provider: DEFAULT_PROVIDER,
@@ -44,13 +49,18 @@ function getClientEnvConfig() {
     };
   }
 
-  // 클라이언트에서 접근 가능한 환경변수
+  // 클라이언트에서 접근 가능한 환경변수 (한 번만 읽기)
   const provider = (process.env.NEXT_PUBLIC_AI_PROVIDER as Provider) || DEFAULT_PROVIDER;
   const openrouterApiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
-  const defaultModel = process.env.NEXT_PUBLIC_AI_MODEL || DEFAULT_MODEL;
+  const defaultModel = process.env.NEXT_PUBLIC_AI_MODEL || getDefaultModel(provider);
   const defaultOpenRouterModel = (process.env.NEXT_PUBLIC_OPENROUTER_DEFAULT_MODEL as ModelId) || DEFAULT_OPENROUTER_MODEL;
 
   return { provider, openrouterApiKey, defaultModel, defaultOpenRouterModel };
+})();
+
+// 환경변수 확인 (캐시된 값 반환)
+function getClientEnvConfig() {
+  return ENV_CONFIG;
 }
 
 // 프로바이더별 저장된 API 키 가져오기
@@ -175,9 +185,10 @@ export function clearAISettings(): void {
   localStorage.removeItem(STORAGE_KEYS.PROVIDER);
   localStorage.removeItem(STORAGE_KEYS.SELECTED_MODEL);
   localStorage.removeItem(STORAGE_KEYS.USE_SERVER_CONFIG);
-  // 모든 프로바이더 API 키 삭제
+  // 모든 프로바이더 API 키 및 최근 모델 삭제
   ['deepseek', 'openai', 'anthropic', 'openrouter'].forEach(p => {
     localStorage.removeItem(`${STORAGE_KEYS.API_KEY}_${p}`);
+    localStorage.removeItem(`${STORAGE_KEYS.RECENT_MODELS}_${p}`);
   });
   // Legacy 키 삭제
   localStorage.removeItem(STORAGE_KEYS.OPENROUTER_API_KEY);
@@ -191,21 +202,8 @@ export function isEnvConfigured(): boolean {
   return !!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 }
 
-// 프로바이더별 기본 모델 가져오기
-export function getDefaultModelForProvider(provider: Provider): string {
-  switch (provider) {
-    case 'deepseek':
-      return 'deepseek-chat';
-    case 'openai':
-      return 'gpt-4o-mini';
-    case 'anthropic':
-      return 'claude-3-5-haiku-latest';
-    case 'openrouter':
-      return DEFAULT_OPENROUTER_MODEL;
-    default:
-      return DEFAULT_MODEL;
-  }
-}
+// 프로바이더별 기본 모델 가져오기 (통합 함수 사용)
+export { getDefaultModel as getDefaultModelForProvider };
 
 // 프로바이더별 API 키 플레이스홀더
 export function getApiKeyPlaceholder(provider: Provider): string {
@@ -237,4 +235,34 @@ export function getApiKeyUrl(provider: Provider): string {
     default:
       return '';
   }
+}
+
+// 최근 사용 모델 가져오기 (프로바이더별)
+export function getRecentModels(provider: Provider): string[] {
+  if (typeof window === 'undefined') return [];
+
+  const key = `${STORAGE_KEYS.RECENT_MODELS}_${provider}`;
+  const stored = localStorage.getItem(key);
+
+  if (!stored) return [];
+
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+// 최근 사용 모델 추가 (프로바이더별)
+export function addRecentModel(provider: Provider, modelId: string): void {
+  if (typeof window === 'undefined') return;
+
+  const recent = getRecentModels(provider);
+
+  // 중복 제거 및 최신 모델을 맨 앞으로
+  const updated = [modelId, ...recent.filter(m => m !== modelId)].slice(0, MAX_RECENT_MODELS);
+
+  const key = `${STORAGE_KEYS.RECENT_MODELS}_${provider}`;
+  localStorage.setItem(key, JSON.stringify(updated));
 }

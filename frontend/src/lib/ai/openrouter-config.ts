@@ -107,6 +107,19 @@ export const DEFAULT_PROVIDER: Provider = 'deepseek';
 export const DEFAULT_MODEL: DirectModelId = 'deepseek-chat';
 export const DEFAULT_OPENROUTER_MODEL: ModelId = 'deepseek/deepseek-v3.2';
 
+// 프로바이더별 기본 모델 (통합)
+export const DEFAULT_MODELS: Record<Provider, string> = {
+  deepseek: 'deepseek-chat',
+  openai: 'gpt-4o',
+  anthropic: 'claude-sonnet-4-20250514',
+  openrouter: 'deepseek/deepseek-v3.2',
+};
+
+// 프로바이더에 대한 기본 모델 조회
+export function getDefaultModel(provider: Provider): string {
+  return DEFAULT_MODELS[provider];
+}
+
 // 카테고리 목록
 export const MODEL_CATEGORIES = [
   { id: 'claude', name: 'Claude', icon: '🟣' },
