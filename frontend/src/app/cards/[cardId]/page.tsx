@@ -163,9 +163,47 @@ export default function CardDetailPage() {
   const handleDownload = async () => {
     if (!card) return;
     try {
-      await cardsApi.downloadExcel(card.card_number);
+      // Build query parameters with card filter pre-applied
+      const params = new URLSearchParams();
+      params.append('cardIds', card.card_number);
+
+      // Apply status filter if not 'all'
+      if (statusFilter !== 'all') {
+        params.append('matchStatus', statusFilter);
+      }
+
+      // Fetch from API route
+      const response = await fetch(`/api/export?${params.toString()}`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '다운로드에 실패했습니다.');
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `카드_${card.card_number}_전체.xlsx`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ''));
+        }
+      }
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download:', error);
+      alert(error instanceof Error ? error.message : '다운로드에 실패했습니다.');
     }
   };
 

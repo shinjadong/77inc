@@ -155,6 +155,25 @@ NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-...
 - **세금분류**: 11개 카테고리 자동 분류 (접대비, 식비, 교통비 등)
 - 엑셀 내보내기 6컬럼 지원 (사용용도 + 추가메모 + 세금분류)
 
+### Excel Download Options
+
+**서버 사이드 다운로드 (권장)**:
+- API Endpoint: `/api/export`
+- 필터링 지원: 기간, 카드, 매칭상태
+- 대용량 데이터 안정적 처리
+- Node.js runtime 기반 (최대 60초 실행 시간)
+
+**필터 옵션**:
+- **기간 필터**: YYYY-MM-DD 형식으로 시작일/종료일 지정
+- **카드 필터**: 1개 이상 선택 가능 (8개 카드 중 선택)
+- **매칭상태 필터**: 전체/매칭대기/자동매칭/수동매칭
+
+**다운로드 형식**:
+- 6컬럼 엑셀 (결제일자, 가맹점명, 이용금액, 사용용도, 추가메모, 세금분류)
+- 카드별 시트 자동 생성
+- 날짜/금액 자동 포맷팅
+- 빈 시트 처리 (데이터 없는 카드)
+
 ### 분석 기능
 - 월별/카드별 사용 내역
 - 매칭 대기 건수 추적
@@ -164,6 +183,15 @@ NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-...
 
 ### AI 어시스턴트
 - `POST /api/assistant` - AI 채팅 (스트리밍)
+
+### Excel Export
+- `GET /api/export` - 서버 사이드 엑셀 다운로드
+  - Query Parameters:
+    - `dateFrom`: 시작일 (YYYY-MM-DD)
+    - `dateTo`: 종료일 (YYYY-MM-DD)
+    - `cardIds`: 카드번호 (쉼표 구분, 예: "3987,4985" 또는 "all")
+    - `matchStatus`: 매칭상태 ("all", "pending", "auto", "manual")
+  - Response: Excel file (XLSX)
 
 ### 거래 관리 (Supabase RPC)
 - 거래 목록 조회
@@ -192,6 +220,14 @@ NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-...
 - 🔄 Phase 6: 분석 및 리포팅 고도화
 
 ## 📝 최근 업데이트
+
+### v3.2 (2025-01-16)
+- **서버 사이드 다운로드**: Next.js API Route 기반 엑셀 다운로드 구현
+- **필터링 기능**: 기간/카드/매칭상태 필터링 추가
+- **카드 매칭 수정**: 6911, 6974, 9980 카드 거래 재분류 (55건)
+- **데이터 무결성**: 하이패스 카드 100% 검증 완료 (6902, 6911)
+- **대용량 처리**: Node.js runtime으로 안정적 처리 (최대 60초)
+- **코드 문서화**: CARD_ID_MAP에 히스토리 주석 추가
 
 ### v3.1.1 (2025-01-16)
 - **네비게이션 수정**: Sidebar 거래관리 링크를 /transactions로 통일

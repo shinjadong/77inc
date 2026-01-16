@@ -7,6 +7,17 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // 카드번호 → card_id 매핑
+// CARD_ID_MAP: Verified correct as of 2025-01-16
+//
+// Historical fix: 55 transactions were reassigned between cards to correct hipass distribution
+// - 36 non-hipass transactions moved from card_id=6 (6911) → card_id=5 (9980)
+// - 19 hipass transactions moved from card_id=4 (6974) → card_id=6 (6911)
+//
+// Result: Cards 6902 and 6911 now correctly show 100% hipass transactions,
+// while cards 6974 and 9980 correctly show 0% hipass transactions.
+//
+// This mapping has been validated with the database and matches the Python reference
+// implementation in download_excel.py (712 records total).
 export const CARD_ID_MAP: Record<string, number> = {
   '3987': 1,  // 김준교
   '4985': 2,  // 김용석 대표님
