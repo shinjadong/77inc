@@ -55,22 +55,26 @@ interface AISettings {
 }
 
 export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
-  // 통합된 설정 상태 (9개 → 4개 주요 필드)
-  const [settings, setSettings] = useState<AISettings>({
-    provider: 'deepseek',
-    apiKey: '',
-    selectedModelId: 'deepseek-chat',
-    useServerConfig: true,
+  // 통합된 설정 상태 (초기값: 환경변수/localStorage에서 로드)
+  const [settings, setSettings] = useState<AISettings>(() => {
+    const savedSettings = getAISettings();
+    return {
+      provider: savedSettings.provider,
+      apiKey: savedSettings.apiKey,
+      selectedModelId: savedSettings.selectedModel,
+      useServerConfig: savedSettings.useServerConfig,
+    };
   });
 
   // UI 관련 상태 (별도 관리)
-  const [isEnvConfigured, setIsEnvConfigured] = useState(false);
+  const [isEnvConfigured, setIsEnvConfigured] = useState(() => getAISettings().isEnvConfigured);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>('claude');
+  const [activeCategory, setActiveCategory] = useState<string>('deepseek'); // DeepSeek 기본 카테고리
   const [searchQuery, setSearchQuery] = useState(''); // Phase 3.2: 검색 추가
+  const [showAdvanced, setShowAdvanced] = useState(false); // 고급 설정 토글
 
-  // 설정 로드
+  // 설정 로드 (모달 열릴 때마다 최신 설정 반영)
   useEffect(() => {
     if (isOpen) {
       const savedSettings = getAISettings();
@@ -208,36 +212,68 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
 
         {/* 프로바이더 선택 */}
         <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <Bot className="h-4 w-4" />
-            AI 프로바이더 선택
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => handleProviderChange(p.id)}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
-                  settings.provider === p.id
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <span className="text-2xl">{p.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {p.name}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Bot className="h-4 w-4" />
+              AI 프로바이더
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              {showAdvanced ? '기본 설정' : '고급 설정'}
+            </button>
+          </div>
+
+          {/* 기본: OpenRouter만 표시 */}
+          {!showAdvanced ? (
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">🌐</span>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100">
+                    OpenRouter (권장)
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {p.description}
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    400+ AI 모델 통합 API • 가장 저렴하고 안정적
                   </p>
                 </div>
-                {settings.provider === p.id && (
-                  <Check className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+              </div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                ✅ Function Calling 완벽 지원 • 동일한 가격 • 더 안정적인 성능
+              </div>
+            </div>
+          ) : (
+            /* 고급: 모든 프로바이더 표시 */
+            <div className="grid grid-cols-2 gap-2">
+              {PROVIDERS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleProviderChange(p.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                    settings.provider === p.id
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <span className="text-2xl">{p.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                      {p.name}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {p.description}
+                    </p>
+                  </div>
+                  {settings.provider === p.id && (
+                    <Check className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Phase 3.4: 서버 설정 사용 토글 (개선된 안내) */}
