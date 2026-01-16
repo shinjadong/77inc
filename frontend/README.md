@@ -79,6 +79,15 @@
 - 3명 사용자 관리
 - 카드 배정/해제
 
+### 8. AI 어시스턴트 (`/assistant`)
+- **Anthropic Claude 3.5 Haiku** 기본 모델 (빠르고 저렴)
+- **Claude Sonnet 4.5** 선택 가능 (최고 성능)
+- 자연어로 거래 조회 및 통계 확인
+- 패턴 추가/조회
+- Excel 다운로드 준비
+- 카드 정보 조회
+- 고정 사이드바로 언제든지 접근 가능
+
 ---
 
 ## 데이터베이스 스키마
@@ -189,6 +198,14 @@ frontend/
 | Supabase | PostgreSQL + API |
 | @supabase/supabase-js | 2.90.1 | Supabase 클라이언트 |
 
+### AI & LLM
+| 패키지 | 버전 | 용도 |
+|--------|------|------|
+| ai | 6.0.35 | Vercel AI SDK |
+| @ai-sdk/anthropic | 1.1.25 | Anthropic Claude SDK |
+| Anthropic Claude 3.5 Haiku | - | 기본 AI 모델 (빠르고 저렴) |
+| Anthropic Claude Sonnet 4.5 | - | 최고 성능 AI 모델 |
+
 ---
 
 ## 현재 데이터 현황 (2026-01-13)
@@ -242,14 +259,22 @@ npm run dev
 
 ### 환경 변수
 
-현재 Supabase 자격 증명은 `src/lib/supabase.ts`에 하드코딩되어 있습니다.
-(Vercel 환경 변수 이슈로 인한 임시 조치)
+`.env.local` 파일 생성:
 
-```typescript
-// src/lib/supabase.ts
-const supabaseUrl = 'https://kxcvsgecefbzoiczyxsp.supabase.co';
-const supabaseAnonKey = 'eyJ...'; // anon key
+```bash
+# Supabase 설정
+NEXT_PUBLIC_SUPABASE_URL=https://kxcvsgecefbzoiczyxsp.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+# AI 설정 (Anthropic Claude)
+ANTHROPIC_API_KEY=sk-ant-api03-...
+
+# 사이트 정보 (선택)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_NAME=칠칠기업 법인카드 관리
 ```
+
+**참고**: Anthropic API 키는 [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)에서 발급받으세요.
 
 ### 스크립트
 
