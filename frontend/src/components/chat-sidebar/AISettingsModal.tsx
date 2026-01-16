@@ -70,9 +70,9 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
   const [isEnvConfigured, setIsEnvConfigured] = useState(() => getAISettings().isEnvConfigured);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>('deepseek'); // DeepSeek 기본 카테고리
+  const [activeCategory, setActiveCategory] = useState<string>('claude'); // Claude 기본 카테고리
   const [searchQuery, setSearchQuery] = useState(''); // Phase 3.2: 검색 추가
-  const [showAdvanced, setShowAdvanced] = useState(false); // 고급 설정 토글
+  const [showAdvanced, setShowAdvanced] = useState(false); // 고급 설정 토글 (기본: Anthropic만)
 
   // 설정 로드 (모달 열릴 때마다 최신 설정 반영)
   useEffect(() => {
@@ -226,23 +226,23 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
             </button>
           </div>
 
-          {/* 기본: OpenRouter만 표시 */}
+          {/* 기본: Anthropic만 표시 */}
           {!showAdvanced ? (
             <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">🌐</span>
+                <span className="text-3xl">🟣</span>
                 <div className="flex-1">
                   <div className="font-semibold text-gray-900 dark:text-gray-100">
-                    OpenRouter (권장)
+                    Anthropic Claude (권장)
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    400+ AI 모델 통합 API • 가장 저렴하고 안정적
+                    최고 성능의 AI 모델 • Claude Sonnet 4.5
                   </p>
                 </div>
                 <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
               </div>
               <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                ✅ Function Calling 완벽 지원 • 동일한 가격 • 더 안정적인 성능
+                ✅ Function Calling 완벽 지원 • 코딩 최적화 • 안정적인 성능
               </div>
             </div>
           ) : (
@@ -315,18 +315,31 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
           </div>
         )}
 
-        {/* Phase 3.4: Anthropic 특별 안내 */}
-        {settings.provider === 'anthropic' && (
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Bot className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                ℹ️ Anthropic 프로바이더
+        {/* Anthropic 환경변수 안내 */}
+        {settings.provider === 'anthropic' && !isEnvConfigured && (
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                환경변수 설정 필요
               </span>
             </div>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 ml-6">
-              Anthropic SDK는 환경변수만 지원합니다. .env.local에 ANTHROPIC_API_KEY를 설정하세요.
+            <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+              Anthropic Claude는 환경변수만 지원합니다.
             </p>
+            <div className="bg-gray-900 dark:bg-gray-800 p-2 rounded text-xs text-green-400 font-mono">
+              # .env.local 파일에 추가<br/>
+              ANTHROPIC_API_KEY=sk-ant-api03-...
+            </div>
+            <a
+              href="https://console.anthropic.com/settings/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+            >
+              API 키 발급받기
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
         )}
 

@@ -34,9 +34,8 @@ export const DIRECT_MODELS = {
     { id: 'o1-mini', name: 'o1 Mini', description: '추론 특화 (경량)', price: '$1.10/$4.40' },
   ],
   anthropic: [
-    { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku', description: '빠른 응답 모델', price: '$1.00/$5.00' },
-    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: '균형잡힌 성능', price: '$3.00/$15.00' },
-    { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: '최고 성능 모델', price: '$15.00/$75.00' },
+    { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku', description: '빠른 응답 모델 (기본)', price: '$1.00/$5.00' },
+    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4.5', description: '최고 성능 모델', price: '$3.00/$15.00' },
   ],
 } as const;
 
@@ -102,18 +101,17 @@ export type DirectModelId =
   | typeof DIRECT_MODELS.openai[number]['id']
   | typeof DIRECT_MODELS.anthropic[number]['id'];
 
-// 기본 설정: OpenRouter (안정적이고 Function Calling 완벽 지원)
-// DeepSeek 모델을 OpenRouter를 통해 사용 (동일한 가격)
-export const DEFAULT_PROVIDER: Provider = 'openrouter';
-export const DEFAULT_MODEL: string = 'deepseek/deepseek-v3.2';
-export const DEFAULT_OPENROUTER_MODEL: ModelId = 'deepseek/deepseek-v3.2';
+// 기본 설정: Anthropic Claude 직접 연동 (안정적이고 Function Calling 완벽 지원)
+export const DEFAULT_PROVIDER: Provider = 'anthropic';
+export const DEFAULT_MODEL: string = 'claude-3-5-haiku-latest';
+export const DEFAULT_OPENROUTER_MODEL: ModelId = 'anthropic/claude-sonnet-4.5';
 
 // 프로바이더별 기본 모델 (통합)
 export const DEFAULT_MODELS: Record<Provider, string> = {
   deepseek: 'deepseek-chat',
   openai: 'gpt-4o',
-  anthropic: 'claude-sonnet-4-20250514',
-  openrouter: 'deepseek/deepseek-v3.2',
+  anthropic: 'claude-3-5-haiku-latest',
+  openrouter: 'anthropic/claude-sonnet-4.5',
 };
 
 // 프로바이더에 대한 기본 모델 조회
