@@ -102,9 +102,10 @@ export type DirectModelId =
   | typeof DIRECT_MODELS.openai[number]['id']
   | typeof DIRECT_MODELS.anthropic[number]['id'];
 
-// 기본 설정: DeepSeek (가장 저렴)
-export const DEFAULT_PROVIDER: Provider = 'deepseek';
-export const DEFAULT_MODEL: DirectModelId = 'deepseek-chat';
+// 기본 설정: OpenRouter (안정적이고 Function Calling 완벽 지원)
+// DeepSeek 모델을 OpenRouter를 통해 사용 (동일한 가격)
+export const DEFAULT_PROVIDER: Provider = 'openrouter';
+export const DEFAULT_MODEL: string = 'deepseek/deepseek-v3.2';
 export const DEFAULT_OPENROUTER_MODEL: ModelId = 'deepseek/deepseek-v3.2';
 
 // 프로바이더별 기본 모델 (통합)
