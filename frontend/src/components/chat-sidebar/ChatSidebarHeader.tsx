@@ -14,23 +14,28 @@ interface ChatSidebarHeaderProps {
 export function ChatSidebarHeader({ onNewChat }: ChatSidebarHeaderProps) {
   const { closeSidebar } = useChatSidebar();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [modelName, setModelName] = useState('DeepSeek V3');
-  const [providerName, setProviderName] = useState('DeepSeek');
+  const [modelName, setModelName] = useState('Claude 3.5 Haiku');
+  const [providerName, setProviderName] = useState('Anthropic');
 
   // 설정에서 현재 모델 가져오기
   useEffect(() => {
-    const settings = getAISettings();
-    const provider = PROVIDERS.find(p => p.id === settings.provider);
-    setProviderName(provider?.name || 'DeepSeek');
+    const updateModelInfo = () => {
+      const settings = getAISettings();
+      const provider = PROVIDERS.find(p => p.id === settings.provider);
+      setProviderName(provider?.name || 'Anthropic');
 
-    if (settings.provider === 'openrouter') {
-      const model = getModelInfo(settings.selectedModel);
-      setModelName(model?.name || settings.selectedModel);
-    } else {
-      const model = getDirectModelInfo(settings.provider as Provider, settings.selectedModel);
-      setModelName(model?.name || settings.selectedModel);
-    }
-  }, [isSettingsOpen]);
+      if (settings.provider === 'openrouter') {
+        const model = getModelInfo(settings.selectedModel);
+        setModelName(model?.name || settings.selectedModel);
+      } else {
+        const model = getDirectModelInfo(settings.provider as Provider, settings.selectedModel);
+        setModelName(model?.name || settings.selectedModel);
+      }
+    };
+
+    // 마운트 시 즉시 실행
+    updateModelInfo();
+  }, [isSettingsOpen]); // 설정 창 닫을 때도 업데이트
 
   return (
     <>

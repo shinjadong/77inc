@@ -42,33 +42,33 @@ export function Modal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className={cn(
-            'w-full bg-white rounded-xl shadow-xl',
+            'w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl max-h-[90vh] flex flex-col',
             sizes[size]
           )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* 헤더 */}
           {(title || description) && (
-            <div className="flex items-start justify-between p-6 border-b border-gray-200">
+            <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div>
                 {title && (
-                  <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
                 )}
                 {description && (
-                  <p className="mt-1 text-sm text-gray-500">{description}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
                 )}
               </div>
               <button
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
           )}
 
-          {/* 컨텐츠 */}
-          <div className="p-6">{children}</div>
+          {/* 컨텐츠 (스크롤 가능) */}
+          <div className="p-6 overflow-y-auto flex-1">{children}</div>
         </div>
       </div>
     </Fragment>
@@ -84,7 +84,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-200',
+        'flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0',
         className
       )}
     >
